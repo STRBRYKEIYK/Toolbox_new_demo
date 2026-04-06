@@ -1,0 +1,645 @@
+@import "tailwindcss";
+
+/* Engineering & Metal Fabrication Theme - Minimalist Flat Illustration with Retro/Mid-Century Modern Vibes */
+
+/* Light mode - default */
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  
+  /* Employee landing inspired palette (light) */
+  --color-background: #f7f4ef; /* warm paper */
+  --color-foreground: #1f1f1f; /* deep coal */
+  --color-card: #ffffff;
+  --color-card-foreground: #1f1f1f;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1f1f1f;
+  --color-primary: #1f1f1f; /* coal */
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #c8441a; /* rust */
+  --color-secondary-foreground: #ffffff;
+  --color-muted: #ece7df; /* warm muted */
+  --color-muted-foreground: #7e7a74; /* mist-dark */
+  --color-accent: #d4572a; /* warm rust accent */
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #e53e3e; /* Alert red */
+  --color-destructive-foreground: #ffffff;
+  --color-success: #38a169; /* Success green */
+  --color-success-foreground: #ffffff;
+  --color-border: #ddd5c8; /* warm border */
+  --color-input: #ffffff;
+  --color-ring: #c8441a; /* rust */
+  --color-chart-1: #1f1f1f;
+  --color-chart-2: #c8441a;
+  --color-chart-3: #38a169;
+  --color-chart-4: #3b82f6;
+  --color-chart-5: #9a9a94;
+  
+  /* Clean, minimal radii */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
+
+/* Dark mode via media query or class */
+@media (prefers-color-scheme: dark) {
+  @theme {
+    /* Employee landing inspired palette (dark) */
+    --color-background: #0c0c0c; /* coal */
+    --color-foreground: #f0ece4; /* cream */
+    --color-card: #1a1a1a; /* steel-dark */
+    --color-card-foreground: #f0ece4;
+    --color-popover: #1a1a1a;
+    --color-popover-foreground: #f0ece4;
+    --color-primary: #f0ece4; /* cream */
+    --color-primary-foreground: #0c0c0c;
+    --color-secondary: #c8441a; /* rust */
+    --color-secondary-foreground: #ffffff;
+    --color-muted: #1f1f1f; /* muted steel */
+    --color-muted-foreground: #9a9a94; /* mist */
+    --color-accent: #d4572a; /* rust accent */
+    --color-accent-foreground: #ffffff;
+    --color-destructive: #f87171;
+    --color-destructive-foreground: #111111;
+    --color-success: #34d399;
+    --color-success-foreground: #111111;
+    --color-border: #2a2a2a;
+    --color-input: #151515;
+    --color-ring: #c8441a;
+    --color-chart-1: #f0ece4;
+    --color-chart-2: #c8441a;
+    --color-chart-3: #34d399;
+    --color-chart-4: #60a5fa;
+    --color-chart-5: #9a9a94;
+  }
+}
+
+/* Explicit dark class - should override everything */
+html.dark,
+html.dark *,
+.dark,
+.dark * {
+  --color-background: #0c0c0c !important;
+  --color-foreground: #f0ece4 !important;
+  --color-card: #1a1a1a !important;
+  --color-card-foreground: #f0ece4 !important;
+  --color-popover: #1a1a1a !important;
+  --color-popover-foreground: #f0ece4 !important;
+  --color-primary: #f0ece4 !important;
+  --color-primary-foreground: #0c0c0c !important;
+  --color-secondary: #c8441a !important;
+  --color-secondary-foreground: #ffffff !important;
+  --color-muted: #1f1f1f !important;
+  --color-muted-foreground: #9a9a94 !important;
+  --color-accent: #d4572a !important;
+  --color-accent-foreground: #ffffff !important;
+  --color-destructive: #f87171 !important;
+  --color-destructive-foreground: #111111 !important;
+  --color-success: #34d399 !important;
+  --color-success-foreground: #111111 !important;
+  --color-border: #2a2a2a !important;
+  --color-input: #151515 !important;
+  --color-ring: #c8441a !important;
+}
+
+/* Explicit light class */
+html.light,
+html.light *,
+.light,
+.light * {
+  --color-background: #f7f4ef !important;
+  --color-foreground: #1f1f1f !important;
+  --color-card: #ffffff !important;
+  --color-card-foreground: #1f1f1f !important;
+  --color-popover: #ffffff !important;
+  --color-popover-foreground: #1f1f1f !important;
+  --color-primary: #1f1f1f !important;
+  --color-primary-foreground: #ffffff !important;
+  --color-secondary: #c8441a !important;
+  --color-secondary-foreground: #ffffff !important;
+  --color-muted: #ece7df !important;
+  --color-muted-foreground: #7e7a74 !important;
+  --color-accent: #d4572a !important;
+  --color-accent-foreground: #ffffff !important;
+  --color-destructive: #dc2626 !important;
+  --color-destructive-foreground: #ffffff !important;
+  --color-success: #10b981 !important;
+  --color-success-foreground: #ffffff !important;
+  --color-border: #ddd5c8 !important;
+  --color-input: #ffffff !important;
+  --color-ring: #c8441a !important;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    @apply antialiased;
+  }
+  
+  body {
+    @apply bg-background text-foreground transition-colors duration-300;
+  }
+  
+  /* Smooth theme transitions */
+  .dark,
+  .light {
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+/* Custom animations for splash screen */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Industrial-themed animations */
+@keyframes cogRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideRight {
+  0%, 100% {
+    left: -100%;
+  }
+  50% {
+    left: 100%;
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes metalShine {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-slide-in {
+  animation: slideInFromLeft 0.3s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-cog-rotate {
+  animation: cogRotate 20s linear infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-spin-slow {
+  animation: spin 8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-slide-in {
+  animation: slideInFromLeft 0.3s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* ============================================
+   Global Scrollbar Styles - Compact & Subtle
+   Applied consistently to all scrollable areas
+   ============================================ */
+
+/* Base scrollbar styles for all elements */
+*,
+*::before,
+*::after {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+/* Webkit scrollbar - Light mode defaults */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 2px;
+  transition: background 0.15s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Dark mode scrollbar */
+.dark *,
+.dark *::before,
+.dark *::after,
+html.dark *,
+html.dark *::before,
+html.dark *::after {
+  scrollbar-color: rgba(71, 85, 105, 0.4) transparent;
+}
+
+.dark ::-webkit-scrollbar-thumb,
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.35);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover,
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.55);
+}
+
+.dark ::-webkit-scrollbar-thumb:active,
+html.dark ::-webkit-scrollbar-thumb:active {
+  background: rgba(71, 85, 105, 0.7);
+}
+
+/* Custom scrollbar class - for explicit use (slightly more visible) */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.35);
+  border-radius: 2.5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.5);
+}
+
+.dark .custom-scrollbar {
+  scrollbar-color: rgba(82, 82, 91, 0.45) transparent;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(82, 82, 91, 0.4);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(82, 82, 91, 0.6);
+}
+
+/* Content scrollbar - for main content areas */
+.content-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 161, 170, 0.3) transparent;
+}
+
+.content-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.content-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2.5px;
+}
+
+.content-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.3);
+  border-radius: 2.5px;
+}
+
+.content-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.45);
+}
+
+.dark .content-scrollbar {
+  scrollbar-color: rgba(82, 82, 91, 0.4) transparent;
+}
+
+.dark .content-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(82, 82, 91, 0.35);
+}
+
+.dark .content-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(82, 82, 91, 0.55);
+}
+
+/* Modal/Dialog scrollbar - extra subtle for overlays */
+[role="dialog"] *,
+[data-radix-dialog-content] *,
+.modal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 161, 170, 0.25) transparent;
+}
+
+[role="dialog"] ::-webkit-scrollbar,
+[data-radix-dialog-content] ::-webkit-scrollbar,
+.modal-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+[role="dialog"] ::-webkit-scrollbar-thumb,
+[data-radix-dialog-content] ::-webkit-scrollbar-thumb,
+.modal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.25);
+  border-radius: 2px;
+}
+
+[role="dialog"] ::-webkit-scrollbar-thumb:hover,
+[data-radix-dialog-content] ::-webkit-scrollbar-thumb:hover,
+.modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.4);
+}
+
+.dark [role="dialog"] ::-webkit-scrollbar-thumb,
+.dark [data-radix-dialog-content] ::-webkit-scrollbar-thumb,
+.dark .modal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(82, 82, 91, 0.3);
+}
+
+.dark [role="dialog"] ::-webkit-scrollbar-thumb:hover,
+.dark [data-radix-dialog-content] ::-webkit-scrollbar-thumb:hover,
+.dark .modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(82, 82, 91, 0.5);
+}
+
+/* Hide scrollbar but keep functionality - for minimal UI */
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* Engineering & Metal Fabrication Theme Styles */
+
+/* Industrial gradients */
+.industrial-gradient {
+  background: linear-gradient(135deg, #3a3a3a 0%, #1f1f1f 50%, #0c0c0c 100%);
+}
+
+.fabrication-gradient {
+  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 50%, #c05621 100%);
+}
+
+.metallic-gradient {
+  background: linear-gradient(135deg, #d4d4d8 0%, #a1a1aa 50%, #52525b 100%);
+}
+
+/* Clean vector-style borders */
+.industrial-border {
+  border: 1px solid #ddd5c8;
+  border-radius: 0.375rem;
+}
+
+.dark .industrial-border {
+  border-color: #2a2a2a;
+}
+
+/* Minimalist card shadows */
+.industrial-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dark .industrial-card {
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Retro-inspired button styles */
+.retro-button {
+  background: linear-gradient(135deg, #f7f4ef 0%, #ece7df 100%);
+  border: 1px solid #ddd5c8;
+  color: #1f1f1f;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.retro-button:hover {
+  background: linear-gradient(135deg, #ece7df 0%, #e3dbcf 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dark .retro-button {
+  background: linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 100%);
+  border-color: #3a3a3a;
+  color: #f0ece4;
+}
+
+.dark .retro-button:hover {
+  background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Vector illustration style icons */
+.vector-icon {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Minimal negative space containers */
+.minimal-container {
+  padding: 1.5rem;
+  background: white;
+  border-radius: 0.5rem;
+  border: 1px solid #ddd5c8;
+}
+
+.dark .minimal-container {
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+}
+
+/* Poster-like composition backgrounds */
+.poster-bg {
+  background: linear-gradient(45deg, #f5f7fa 25%, transparent 25%),
+              linear-gradient(-45deg, #f5f7fa 25%, transparent 25%),
+              linear-gradient(45deg, transparent 75%, #f5f7fa 75%),
+              linear-gradient(-45deg, transparent 75%, #f5f7fa 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.dark .poster-bg {
+  background: linear-gradient(45deg, #1a202c 25%, transparent 25%),
+              linear-gradient(-45deg, #1a202c 25%, transparent 25%),
+              linear-gradient(45deg, transparent 75%, #1a202c 75%),
+              linear-gradient(-45deg, transparent 75%, #1a202c 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+/* Metallic texture effect for engineering feel */
+.metallic-texture {
+  position: relative;
+}
+
+.metallic-texture::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.1) 100%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.dark .metallic-texture::before {
+  background: linear-gradient(45deg, rgba(255,255,255,0.05) 0%, transparent 50%, rgba(0,0,0,0.2) 100%);
+}
+
+/* Clean engineering typography */
+.engineering-font {
+  font-family: 'Geist Mono', 'Courier New', monospace;
+  letter-spacing: 0.025em;
+}
+
+/* Minimalist focus states */
+.focus-engineering:focus {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(var(--color-ring), 0.2);
+}
+
+/* Industrial input styling */
+.industrial-input {
+  background: var(--color-input);
+  border: 1px solid var(--color-border);
+  color: var(--color-foreground);
+  transition: all 0.2s ease;
+}
+
+.industrial-input:focus {
+  border-color: var(--color-ring);
+  box-shadow: 0 0 0 2px rgba(var(--color-ring), 0.1);
+}
+
+/* Clean engineering badges */
+.industrial-badge {
+  background: var(--color-muted);
+  color: var(--color-muted-foreground);
+  border: 1px solid var(--color-border);
+  font-weight: 500;
+}
+
+/* Vector-style separators */
+.industrial-separator {
+  background: var(--color-border);
+  height: 1px;
+}
+
+/* Engineering-themed progress bars */
+.industrial-progress {
+  background: var(--color-muted);
+}
+
+.industrial-progress-indicator {
+  background: linear-gradient(90deg, var(--color-secondary), var(--color-accent));
+}

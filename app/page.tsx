@@ -1,0 +1,325 @@
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import { Header } from "../components/header"
+import { DashboardView } from "../components/dashboard-view"
+import { CartView } from "../components/cart-view"
+import { ItemDetailView } from "../components/item-detail-view"
+import { EmployeeLogsView } from "../components/employee-logs-view"
+import { StartPage } from "../components/start-page"
+import { EnhancedToaster } from "../components/enhanced-toaster"
+import { useCartPersistence } from "../hooks/use-cart-persistence"
+import { useOfflineManager } from "../hooks/use-offline-manager"
+import { useTransactionRealtime, useAutoRefresh } from "../hooks/use-realtime"
+import { apiBridge } from "../lib/api-bridge"
+import { DEFAULT_API_CONFIG } from "../lib/api-config"
+import { KeyboardShortcuts } from "../components/keyboard-shortcuts"
+// import { BackToTop } from "../components/back-to-top"
+import type { Product } from "../lib/barcode-scanner"
+
+export type ViewType = "dashboard" | "cart" | "item-detail" | "logs"
+
+export interface CartItem {
+  id: string
+  name: string
+  brand: string
+  itemType: string
+  location: string
+  // Balance is automatically calculated by the database as (in_qty - out_qty)
+  balance: number
+  quantity: number
+  // Status is automatically calculated by the database trigger based on balance vs min_stock
+  status: "in-stock" | "low-stock" | "out-of-stock"
+  // Timestamp for sorting by recently added
+  addedAt?: number
+}
+
+
+
+export default function HomePage() {
+  const [isAppStarted, setIsAppStarted] = useState(false)
+  const [apiUrl, setApiUrl] = useState(DEFAULT_API_CONFIG.baseUrl)
+  const [isApiConnected, setIsApiConnected] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
+  const [isTestingConnection, setIsTestingConnection] = useState(false)
+
+  const [currentView, setCurrentView] = useState<ViewType>("dashboard")
+  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  
+  // Cart persistence integration
+  const { 
+    cartState, 
+    addToCart: persistAddToCart, 
+    updateQuantity: persistUpdateQuantity,
+    removeFromCart: persistRemoveFromCart
+  } = useCartPersistence()
+  
+  // Offline management integration
+  const { 
+    storeOfflineData, 
+    getOfflineData, 
+    isOffline
+  } = useOfflineManager()
+  
+  const [headerSearchQuery, setHeaderSearchQuery] = useState("")
+  const [dashboardRefresh, setDashboardRefresh] = useState<(() => void) | null>(null)
+  
+  // Move products state to parent to prevent unnecessary API calls
+  const [products, setProducts] = useState<Product[]>([])
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false)
+  const [productsDataSource, setProductsDataSource] = useState<"api" | "cached">("cached")
+  const [productsLastFetchTime, setProductsLastFetchTime] = useState<Date | null>(null)
+
+  const runConnectionTest = useCallback(async () => {
+    setIsTestingConnection(true)
+    setApiError(null)
+
+    try {
+      const connected = await apiBridge.testConnection({ skipCache: true })
+      setIsApiConnected(connected)
+
+      if (!connected) {
+        setApiError("Unable to connect to API server. Please check if the server is running and accessible.")
+      }
+    } catch (error) {
+      setIsApiConnected(false)
+      setApiError("Connection failed. This might be due to CORS issues or network problems.")
+    } finally {
+      setIsTestingConnection(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (apiUrl) {
+      apiBridge.updateConfig({ baseUrl: apiUrl })
+      runConnectionTest()
+    }
+  }, [apiUrl, runConnectionTest])
+
+  useEffect(() => {
+    const handleOnline = () => {
+      runConnectionTest()
+    }
+
+    const handleOffline = () => {
+      setIsApiConnected(false)
+      setApiError("Network is offline. Reconnect to continue syncing with API.")
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [runConnectionTest])
+
+  const handleApiUrlChange = (newUrl: string) => {
+    setApiUrl(newUrl)
+    apiBridge.updateConfig({ baseUrl: newUrl })
+  }
+
+  const handleStartApp = () => {
+    setIsAppStarted(true)
+  }
+
+  // Sync persistent cart state with local cart state
+  useEffect(() => {
+    if (cartState) {
+      // Convert persistent cart items to local cart format, including addedAt for sorting
+      const localCartItems: CartItem[] = cartState.items.map(item => ({
+        ...item.product,
+        quantity: item.quantity,
+        addedAt: item.addedAt ? new Date(item.addedAt).getTime() : Date.now()
+      }))
+      setCartItems(localCartItems)
+    } else {
+      // Clear local cart when persistent cart is empty
+      setCartItems([])
+    }
+  }, [cartState])
+
+  // Store products for offline use when they update
+  useEffect(() => {
+    if (products.length > 0) {
+      storeOfflineData('products', products)
+    }
+  }, [products, storeOfflineData])
+
+  // Load offline products if network is offline OR API is unavailable
+  useEffect(() => {
+    if ((isOffline || !isApiConnected) && products.length === 0) {
+      const offlineData = getOfflineData()
+      if (offlineData.products.length > 0) {
+        setProducts(offlineData.products)
+        setProductsDataSource('cached')
+        setProductsLastFetchTime(new Date(offlineData.lastSync))
+      }
+    }
+  }, [isOffline, isApiConnected, products.length, getOfflineData])
+
+  // Real-time updates integration
+  const refreshProducts = useCallback(() => {
+    if (dashboardRefresh) {
+      dashboardRefresh()
+    }
+  }, [dashboardRefresh])
+
+  // Auto-refresh when items are updated
+  useAutoRefresh(
+    [
+      'item_updated', 'item_created', 'item_deleted',
+      // Use emitted stock events and the generic refresh signal
+      'stock_updated', 'stock_inserted', 'stock_removed', 'inventory:refresh'
+    ],
+    refreshProducts,
+    { debounce: 1000, enabled: isAppStarted },
+    apiUrl
+  )
+
+  // Listen for transaction updates (for cart/order updates)
+  useTransactionRealtime((update) => {
+    if (update.type === 'created') {
+      console.log('[Toolbox] Transaction created, refreshing data')
+      refreshProducts()
+    }
+  }, apiUrl)
+
+  const addToCart = async (product: Product, quantity = 1, isFromBarcode = false) => {
+    // Add to persistent storage - this will automatically update cartState via useCartPersistence
+    const notes = isFromBarcode ? `Added via barcode from ${currentView}` : `Added from ${currentView}`
+    const success = await persistAddToCart(product, quantity, notes)
+    
+    return success
+    // Note: No need to manually update local state here as the useEffect will sync from cartState
+  }
+
+  const updateCartItemQuantity = async (id: string, quantity: number) => {
+    if (quantity <= 0) {
+      // Remove from persistent storage
+      await persistRemoveFromCart(id)
+    } else {
+      // Update in persistent storage
+      await persistUpdateQuantity(id, quantity)
+    }
+    // Note: No need to manually update local state here as the useEffect will sync from cartState
+  }
+
+  const removeFromCart = async (id: string) => {
+    // Remove from persistent storage
+    await persistRemoveFromCart(id)
+    // Note: No need to manually update local state here as the useEffect will sync from cartState
+  }
+
+  const viewItemDetail = (product: Product) => {
+    setSelectedProduct(product)
+    setCurrentView("item-detail")
+  }
+
+  const totalCartItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+
+  // Listen for navigation requests from components (e.g., modal requesting to open cart view)
+  useEffect(() => {
+    const navHandler = (e: Event) => {
+      try {
+        const detail = (e as CustomEvent).detail || {}
+        const view = detail.view
+        if (view === 'cart') setCurrentView('cart')
+      } catch (err) {
+        console.error('navigation event handler error', err)
+      }
+    }
+    window.addEventListener('toolbox-navigate', navHandler as EventListener)
+    return () => window.removeEventListener('toolbox-navigate', navHandler as EventListener)
+  }, [])
+
+  // Check if we have cached data available
+  const offlineData = getOfflineData()
+  const hasCachedData = offlineData.products.length > 0
+
+  if (!isAppStarted) {
+    return (
+      <StartPage
+        onStart={handleStartApp}
+        apiUrl={apiUrl}
+        onApiUrlChange={handleApiUrlChange}
+        isConnected={isApiConnected}
+        apiError={apiError}
+        isTestingConnection={isTestingConnection}
+        hasCachedData={hasCachedData}
+        isDataLoading={isLoadingProducts}
+      />
+    )
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950">
+      <Header
+        cartItemCount={totalCartItems}
+        currentView={currentView}
+        onViewChange={(view: string) => setCurrentView(view as ViewType)}
+        onSearch={setHeaderSearchQuery}
+      />
+
+      <main className="flex-1">
+        <div className="max-w-[1600px] mx-auto px-2 lg:px-3">
+          {/* Keep DashboardView mounted but conditionally visible */}
+          <div className={currentView === "dashboard" ? "block" : "hidden"}>
+            <DashboardView 
+              onAddToCart={addToCart} 
+              onViewItem={viewItemDetail} 
+              searchQuery={headerSearchQuery}
+              onRefreshData={(fn) => setDashboardRefresh(() => fn)}
+              apiUrl={apiUrl}
+              onApiUrlChange={handleApiUrlChange}
+              isConnected={isApiConnected}
+              // Pass products state from parent
+              products={products}
+              setProducts={setProducts}
+              isLoadingProducts={isLoadingProducts}
+              setIsLoadingProducts={setIsLoadingProducts}
+              dataSource={productsDataSource}
+              setDataSource={setProductsDataSource}
+              lastFetchTime={productsLastFetchTime}
+              setLastFetchTime={setProductsLastFetchTime}
+            />
+          </div>
+
+          {currentView === "cart" && (
+            <CartView
+              items={cartItems}
+              onUpdateQuantity={updateCartItemQuantity}
+              onRemoveItem={removeFromCart}
+              onReturnToBrowsing={() => setCurrentView("dashboard")}
+              onRefreshData={dashboardRefresh ?? undefined}
+            />
+          )}
+
+          {currentView === "item-detail" && selectedProduct && (
+            <ItemDetailView
+              product={selectedProduct}
+              onAddToCart={addToCart}
+              onBack={() => setCurrentView("dashboard")}
+            />
+          )}
+
+          {currentView === "logs" && (
+            <EmployeeLogsView className="h-full" />
+          )}
+        </div>
+      </main>
+
+      <EnhancedToaster />
+      
+      <KeyboardShortcuts
+        onViewChange={(view: string) => setCurrentView(view as ViewType)}
+        onRefreshData={dashboardRefresh || (() => {})}
+        cartItemCount={totalCartItems}
+      />
+      
+      {/* <BackToTop /> */}
+    </div>
+  )
+}
