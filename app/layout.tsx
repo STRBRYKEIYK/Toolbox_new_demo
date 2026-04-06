@@ -11,16 +11,18 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const baseUrl = import.meta.env.BASE_URL
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <link rel="manifest" href="/manifest.json" />
+        <link rel="manifest" href={`${baseUrl}manifest.json`} />
         <meta name="theme-color" content="#0f172a" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Toolbox Inventory" />
-        <link rel="apple-touch-icon" href="/ToolBoxlogo.png" />
+        <link rel="apple-touch-icon" href={`${baseUrl}ToolBoxlogo.png`} />
         <meta name="mobile-web-app-capable" content="yes" />
         <script
           dangerouslySetInnerHTML={{

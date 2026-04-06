@@ -42,6 +42,7 @@ export function StartPage({
 }: StartPageProps) {
   const [tempApiUrl, setTempApiUrl] = useState(apiUrl)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const logoSrc = `${import.meta.env.BASE_URL}ToolBoxlogo.png`
 
   const handleSaveSettings = () => {
     onApiUrlChange(tempApiUrl)
@@ -87,7 +88,7 @@ export function StartPage({
               {/* Beveled logo container */}
               <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-b from-zinc-800 to-zinc-950 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),0_10px_20px_rgba(0,0,0,0.5)] industrial-border overflow-hidden ring-1 ring-black">
                 <img 
-                  src="/ToolBoxlogo.png" 
+                  src={logoSrc} 
                   alt="Toolbox Logo" 
                   className="w-16 h-16 object-contain drop-shadow-xl"
                   onError={(e) => {

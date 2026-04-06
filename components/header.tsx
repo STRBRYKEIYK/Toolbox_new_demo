@@ -21,6 +21,7 @@ export function Header({ cartItemCount, currentView, onViewChange, onSearch }: H
   const [searchQuery, setSearchQuery] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [products, setProducts] = useState<Array<{id: string, name: string, brand: string, itemType: string}>>([])
+  const logoSrc = `${import.meta.env.BASE_URL}ToolBoxlogo.png`
   
   // Load products for autocomplete
   useEffect(() => {
@@ -116,7 +117,7 @@ export function Header({ cartItemCount, currentView, onViewChange, onSearch }: H
             <div className="absolute inset-0 bg-orange-500/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative w-12 h-12 rounded-xl bg-gradient-to-b from-zinc-800 to-zinc-900 border border-zinc-700 flex items-center justify-center shadow-inner">
               <img 
-                src="/ToolBoxlogo.png" 
+                src={logoSrc} 
                 alt="Toolbox Logo" 
                 className="w-8 h-8 object-contain drop-shadow-md"
                 onError={(e) => {

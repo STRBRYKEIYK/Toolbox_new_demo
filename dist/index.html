@@ -2,7 +2,7 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/ToolBoxlogo.png" />
+    <link rel="icon" type="image/png" href="/Toolbox_new_demo/ToolBoxlogo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- Preconnect to API domains for faster connection -->
@@ -10,10 +10,10 @@
     <link rel="dns-prefetch" href="https://jjcenggworks.com" />
     
     <!-- Preload critical assets for LCP improvement -->
-    <link rel="preload" href="/ToolBoxlogo.png" as="image" type="image/png" />
+    <link rel="preload" href="/Toolbox_new_demo/ToolBoxlogo.png" as="image" type="image/png" />
     
     <!-- Preload main JavaScript module -->
-    <link rel="modulepreload" href="data:application/octet-stream;base64,aW1wb3J0IFJlYWN0IGZyb20gInJlYWN0Ig0KaW1wb3J0IFJlYWN0RE9NIGZyb20gInJlYWN0LWRvbS9jbGllbnQiDQppbXBvcnQgQXBwIGZyb20gIi4vYXBwL3BhZ2UiDQppbXBvcnQgeyBUaGVtZVByb3ZpZGVyIH0gZnJvbSAiLi9jb21wb25lbnRzL3RoZW1lLXByb3ZpZGVyIg0KaW1wb3J0IHsgRXJyb3JCb3VuZGFyeSB9IGZyb20gIi4vY29tcG9uZW50cy9lcnJvci1ib3VuZGFyeSINCmltcG9ydCB7IExvYWRpbmdQcm92aWRlciB9IGZyb20gIi4vY29tcG9uZW50cy9sb2FkaW5nLWNvbnRleHQiDQppbXBvcnQgIi4vYXBwL2dsb2JhbHMuY3NzIg0KDQovLyBJbml0aWFsaXplIHNlY3VyZSBsb2dnZXIgdG8gcHJldmVudCBkYXRhIGV4cG9zdXJlIGluIHByb2R1Y3Rpb24NCmltcG9ydCAiLi9saWIvbG9nZ2VyIg0KDQovLyBJbml0aWFsaXplIGF4aW9zIGludGVyY2VwdG9ycyBmb3IgZW5jcnlwdGVkIGltYWdlIGRlY3J5cHRpb24NCmltcG9ydCB7IHNldHVwQXhpb3NJbnRlcmNlcHRvcnMgfSBmcm9tICIuLi9zcmMvdXRpbHMvYXhpb3MtZW5jcnlwdGlvbi5qcyINCnNldHVwQXhpb3NJbnRlcmNlcHRvcnMoKQ0KDQpSZWFjdERPTS5jcmVhdGVSb290KGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJyb290IikhKS5yZW5kZXIoDQogIDxSZWFjdC5TdHJpY3RNb2RlPg0KICAgIDxFcnJvckJvdW5kYXJ5Pg0KICAgICAgPFRoZW1lUHJvdmlkZXIgZGVmYXVsdFRoZW1lPSJkYXJrIiBzdG9yYWdlS2V5PSJ0b29sYm94LXRoZW1lIj4NCiAgICAgICAgPExvYWRpbmdQcm92aWRlcj4NCiAgICAgICAgICA8QXBwIC8+DQogICAgICAgIDwvTG9hZGluZ1Byb3ZpZGVyPg0KICAgICAgPC9UaGVtZVByb3ZpZGVyPg0KICAgIDwvRXJyb3JCb3VuZGFyeT4NCiAgPC9SZWFjdC5TdHJpY3RNb2RlPiwNCikNCg==" />
+    <link rel="modulepreload" href="data:application/octet-stream;base64,aW1wb3J0IFJlYWN0IGZyb20gInJlYWN0Ig0KaW1wb3J0IFJlYWN0RE9NIGZyb20gInJlYWN0LWRvbS9jbGllbnQiDQppbXBvcnQgQXBwIGZyb20gIi4vYXBwL3BhZ2UiDQppbXBvcnQgeyBUaGVtZVByb3ZpZGVyIH0gZnJvbSAiLi9jb21wb25lbnRzL3RoZW1lLXByb3ZpZGVyIg0KaW1wb3J0IHsgRXJyb3JCb3VuZGFyeSB9IGZyb20gIi4vY29tcG9uZW50cy9lcnJvci1ib3VuZGFyeSINCmltcG9ydCB7IExvYWRpbmdQcm92aWRlciB9IGZyb20gIi4vY29tcG9uZW50cy9sb2FkaW5nLWNvbnRleHQiDQppbXBvcnQgeyBUb29sdGlwUHJvdmlkZXIgfSBmcm9tICIuL2NvbXBvbmVudHMvdWkvdG9vbHRpcCINCmltcG9ydCAiLi9hcHAvZ2xvYmFscy5jc3MiDQoNCi8vIEluaXRpYWxpemUgc2VjdXJlIGxvZ2dlciB0byBwcmV2ZW50IGRhdGEgZXhwb3N1cmUgaW4gcHJvZHVjdGlvbg0KaW1wb3J0ICIuL2xpYi9sb2dnZXIiDQoNClJlYWN0RE9NLmNyZWF0ZVJvb3QoZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoInJvb3QiKSEpLnJlbmRlcigNCiAgPFJlYWN0LlN0cmljdE1vZGU+DQogICAgPEVycm9yQm91bmRhcnk+DQogICAgICA8VGhlbWVQcm92aWRlciBkZWZhdWx0VGhlbWU9ImRhcmsiIHN0b3JhZ2VLZXk9InRvb2xib3gtdGhlbWUiPg0KICAgICAgICA8VG9vbHRpcFByb3ZpZGVyPg0KICAgICAgICAgIDxMb2FkaW5nUHJvdmlkZXI+DQogICAgICAgICAgICA8QXBwIC8+DQogICAgICAgICAgPC9Mb2FkaW5nUHJvdmlkZXI+DQogICAgICAgIDwvVG9vbHRpcFByb3ZpZGVyPg0KICAgICAgPC9UaGVtZVByb3ZpZGVyPg0KICAgIDwvRXJyb3JCb3VuZGFyeT4NCiAgPC9SZWFjdC5TdHJpY3RNb2RlPiwNCikNCg==" />
     
     <script>
       // Prevent flash of unstyled content by setting theme before page renders
@@ -42,13 +42,13 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="Toolbox Inventory" />
     <meta name="description" content="Professional warehouse inventory management system with offline capability for employees" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/ToolBoxlogo.png" />
+    <link rel="manifest" href="/Toolbox_new_demo/manifest.json" />
+    <link rel="apple-touch-icon" href="/Toolbox_new_demo/ToolBoxlogo.png" />
     <title>Toolbox Inventory - Warehouse Management</title>
-    <script type="module" crossorigin src="/assets/index-pFuQAfUM.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/react-vendor-BcV4ExuV.js">
-    <link rel="modulepreload" crossorigin href="/assets/ui-vendor-CwfXckri.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-BWsnlg8e.css">
+    <script type="module" crossorigin src="/Toolbox_new_demo/assets/index-JXJqLW3a.js"></script>
+    <link rel="modulepreload" crossorigin href="/Toolbox_new_demo/assets/react-vendor-BYA32aEE.js">
+    <link rel="modulepreload" crossorigin href="/Toolbox_new_demo/assets/ui-vendor-Dq3Cmqx5.js">
+    <link rel="stylesheet" crossorigin href="/Toolbox_new_demo/assets/index-NEOqaANl.css">
   </head>
   <body>
     <div id="root"></div>

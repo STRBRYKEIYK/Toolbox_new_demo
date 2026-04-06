@@ -2,24 +2,24 @@
   "name": "Toolbox Inventory - Warehouse Management",
   "short_name": "Toolbox Inventory",
   "description": "Professional warehouse inventory management system with offline capability for employees",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#1e293b",
   "orientation": "portrait-primary",
-  "scope": "/",
+  "scope": "./",
   "lang": "en-US",
   "categories": ["productivity", "business", "utilities"],
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/ToolBoxlogo.png",
+      "src": "ToolBoxlogo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/favicon.ico",
+      "src": "favicon.ico",
       "sizes": "16x16 32x32 48x48",
       "type": "image/x-icon"
     }
@@ -29,10 +29,10 @@
       "name": "Scan Items",
       "short_name": "Scanner",
       "description": "Quick access to barcode scanner",
-      "url": "/?action=scan",
+      "url": "./?action=scan",
       "icons": [
         {
-          "src": "/ToolBoxlogo.png",
+          "src": "ToolBoxlogo.png",
           "sizes": "96x96",
           "type": "image/png"
         }
@@ -42,10 +42,10 @@
       "name": "View Cart",
       "short_name": "Cart",
       "description": "Access your cart items",
-      "url": "/?action=cart",
+      "url": "./?action=cart",
       "icons": [
         {
-          "src": "/ToolBoxlogo.png",
+          "src": "ToolBoxlogo.png",
           "sizes": "96x96", 
           "type": "image/png"
         }
@@ -55,10 +55,10 @@
       "name": "Search Items",
       "short_name": "Search",
       "description": "Search inventory items",
-      "url": "/?action=search",
+      "url": "./?action=search",
       "icons": [
         {
-          "src": "/ToolBoxlogo.png",
+          "src": "ToolBoxlogo.png",
           "sizes": "96x96",
           "type": "image/png"
         }
@@ -67,14 +67,14 @@
   ],
   "screenshots": [
     {
-      "src": "/placeholder.jpg",
+      "src": "placeholder.jpg",
       "sizes": "1280x720",
       "type": "image/jpeg",
       "platform": "wide",
       "label": "Dashboard view showing inventory items with search and barcode scanning capabilities"
     },
     {
-      "src": "/placeholder.jpg", 
+      "src": "placeholder.jpg", 
       "sizes": "390x844",
       "type": "image/jpeg",
       "platform": "narrow",
