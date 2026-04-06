@@ -3,10 +3,7 @@
 // Real-time inventory synchronization hook for Toolbox
 // ============================================================================
 import { useEffect, useCallback, useRef } from 'react'
-import { pollingManager } from '../../src/utils/api/websocket/polling-manager.jsx'
-import { SOCKET_EVENTS, SOCKET_ROOMS } from '../../src/utils/api/websocket/constants/events.js'
-import { InventoryEventHandler } from '../../src/utils/api/websocket/handlers/inventory-handler.js'
-import { ProcurementEventHandler } from '../../src/utils/api/websocket/handlers/procurement-handler.js'
+import { pollingManager, SOCKET_EVENTS, SOCKET_ROOMS } from '../lib/demo-backend'
 
 interface InventoryChangeEvent {
   type: 'update' | 'insert' | 'remove' | 'create' | 'delete' | 'checkout' | 'po_received'
@@ -43,10 +40,6 @@ export function useInventorySync(options: UseInventorySyncOptions = {}) {
 
     // Register event handlers only once
     if (!handlersRegistered.current) {
-      // Create handlers (they register themselves with the manager)
-      new InventoryEventHandler(pollingManager)
-      new ProcurementEventHandler(pollingManager)
-      
       // Join inventory and procurement rooms
       pollingManager.joinRoom(SOCKET_ROOMS.INVENTORY)
       pollingManager.joinRoom(SOCKET_ROOMS.PROCUREMENT)

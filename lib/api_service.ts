@@ -1,11 +1,6 @@
-import { ItemsService } from './Services/items.service'
-import { EmployeesService } from './Services/employees.service'
-import { TransactionsService } from './Services/transactions.service'
-import { ConnectionService } from './Services/connection.service'
-import { EmployeeInventoryService } from './Services/employee-inventory.service'
-import type { ApiConfig, TransactionFilters, TransactionResponse, TransactionStats } from './api-config'
-import { DEFAULT_API_CONFIG } from './api-config'
-import type { TransactionLogData } from './Services/transactions.service'
+import { demoBackend } from './demo-backend'
+import { DEFAULT_API_CONFIG, type ApiConfig, type TransactionFilters, type TransactionResponse, type TransactionStats } from './api-config'
+import type { TransactionLogData } from './api-bridge'
 import type { EmployeeInventoryCheckout } from './Services/employee-inventory.service'
 
 /**
@@ -21,42 +16,35 @@ import type { EmployeeInventoryCheckout } from './Services/employee-inventory.se
  */
 export class ApiServices {
   private config: ApiConfig
-  private itemsService: ItemsService
-  private employeesService: EmployeesService
-  private transactionsService: TransactionsService
-  private connectionService: ConnectionService
-  private employeeInventoryService: EmployeeInventoryService
 
   constructor(config: ApiConfig = DEFAULT_API_CONFIG) {
     this.config = config
-    
-    // Initialize all service modules
-    this.itemsService = new ItemsService(config)
-    this.employeesService = new EmployeesService(config)
-    this.transactionsService = new TransactionsService(config)
-    this.connectionService = new ConnectionService(config)
-    this.employeeInventoryService = new EmployeeInventoryService(config)
+    demoBackend.updateBaseUrl(config.baseUrl)
   }
 
   /**
    * Update configuration for all services
    */
   updateConfig(newConfig: Partial<ApiConfig>) {
-    this.connectionService.updateConfig(newConfig)
-    this.config = this.connectionService.getConfig()
-    
-    // Update all other services with new config
-    this.itemsService.updateConfig(this.config)
-    this.employeesService.updateConfig(this.config)
-    this.transactionsService.updateConfig(this.config)
-    this.employeeInventoryService.updateConfig(this.config)
+    this.config = {
+      ...this.config,
+      ...newConfig,
+      isConnected: true,
+    }
+
+    if (newConfig.baseUrl) {
+      demoBackend.updateBaseUrl(newConfig.baseUrl)
+    }
   }
 
   /**
    * Get current configuration
    */
   getConfig(): ApiConfig {
-    return this.connectionService.getConfig()
+    return {
+      baseUrl: demoBackend.getConnectionStatus().baseUrl,
+      isConnected: true,
+    }
   }
 
   // ========================================
@@ -67,7 +55,7 @@ export class ApiServices {
    * Test connection to the API server
    */
   async testConnection(): Promise<boolean> {
-    return this.connectionService.testConnection()
+    return demoBackend.testConnection()
   }
 
   // ========================================
@@ -78,14 +66,15 @@ export class ApiServices {
    * Fetch all items from the API
    */
   async fetchItems(): Promise<any[]> {
-    return this.itemsService.fetchItems()
+    return demoBackend.fetchItems()
   }
 
   /**
    * Commit item changes to the API
    */
   async commitItemChanges(items: any[]): Promise<boolean> {
-    return this.itemsService.commitItemChanges(items)
+    void items
+    return true
   }
 
   /**
@@ -97,28 +86,28 @@ export class ApiServices {
     value: number, 
     notes?: string
   ): Promise<any> {
-    return this.itemsService.updateItemQuantity(itemId, updateType, value, notes)
+    return demoBackend.updateItemQuantity(itemId, updateType, value)
   }
 
   /**
    * Get list of images for an item
    */
   async getItemImages(itemId: number): Promise<any> {
-    return this.itemsService.getItemImages(itemId)
+    return demoBackend.getItemImages(itemId)
   }
 
   /**
    * Build URL for latest image (direct <img src>)
    */
   getItemLatestImageUrl(itemId: number): string {
-    return this.itemsService.getItemLatestImageUrl(itemId)
+    return demoBackend.getItemLatestImageUrl(itemId)
   }
 
   /**
    * Build URL for a specific image filename
    */
   getItemImageUrl(itemId: number, filename: string): string {
-    return this.itemsService.getItemImageUrl(itemId, filename)
+    return demoBackend.getItemImageUrl(itemId, filename)
   }
 
   // ========================================
@@ -129,7 +118,7 @@ export class ApiServices {
    * Fetch all employees from the API
    */
   async fetchEmployees(): Promise<any[]> {
-    return this.employeesService.fetchEmployees()
+    return demoBackend.fetchEmployees({ includeAllStatuses: true })
   }
 
   // ========================================
@@ -140,7 +129,7 @@ export class ApiServices {
     checkouts: EmployeeInventoryCheckout[],
     checkoutBy: string | null = null
   ): Promise<any> {
-    return this.employeeInventoryService.bulkCheckout(checkouts, checkoutBy)
+    return demoBackend.bulkCheckoutEmployeeInventory(checkouts, checkoutBy)
   }
 
   // ========================================
@@ -151,28 +140,29 @@ export class ApiServices {
    * Fetch transactions with optional filters
    */
   async fetchTransactions(filters: TransactionFilters = {}): Promise<TransactionResponse> {
-    return this.transactionsService.fetchTransactions(filters)
+    return demoBackend.fetchTransactions(filters) as Promise<TransactionResponse>
   }
 
   /**
    * Fetch transaction statistics
    */
   async fetchTransactionStats(days: number = 30): Promise<TransactionStats> {
-    return this.transactionsService.fetchTransactionStats(days)
+    return demoBackend.fetchTransactionStats(days) as Promise<TransactionStats>
   }
 
   /**
    * Fetch transactions for a specific user
    */
   async fetchUserTransactions(username: string, filters: Omit<TransactionFilters, 'username'> = {}): Promise<any> {
-    return this.transactionsService.fetchUserTransactions(username, filters)
+    return demoBackend.fetchUserTransactions(username, filters)
   }
 
   /**
    * Log a transaction to the API
    */
   async logTransaction(transactionData: TransactionLogData): Promise<boolean> {
-    return this.transactionsService.logTransaction(transactionData)
+    const result = await demoBackend.logTransaction(transactionData as any)
+    return Boolean(result?.success)
   }
 
   // ========================================
@@ -183,14 +173,14 @@ export class ApiServices {
    * Check if the API is currently connected
    */
   isConnected(): boolean {
-    return this.config.isConnected
+    return true
   }
 
   /**
    * Get the current API base URL
    */
   getBaseUrl(): string {
-    return this.config.baseUrl
+    return demoBackend.getConnectionStatus().baseUrl
   }
 
   /**

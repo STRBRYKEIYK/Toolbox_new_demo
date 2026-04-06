@@ -37,9 +37,9 @@ export interface CartItem {
 
 
 export default function HomePage() {
-  const [isAppStarted, setIsAppStarted] = useState(false)
+  const [isAppStarted, setIsAppStarted] = useState(true)
   const [apiUrl, setApiUrl] = useState(DEFAULT_API_CONFIG.baseUrl)
-  const [isApiConnected, setIsApiConnected] = useState(false)
+  const [isApiConnected, setIsApiConnected] = useState(true)
   const [apiError, setApiError] = useState<string | null>(null)
   const [isTestingConnection, setIsTestingConnection] = useState(false)
 

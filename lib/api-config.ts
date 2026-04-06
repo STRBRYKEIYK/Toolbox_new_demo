@@ -17,8 +17,8 @@ export interface ApiConfig {
 
 // Default configuration
 export const DEFAULT_API_CONFIG: ApiConfig = {
-  baseUrl: env.API_BASE_URL,
-  isConnected: false,
+  baseUrl: 'demo://toolbox',
+  isConnected: true,
 }
 
 // API endpoint constants (used by services)

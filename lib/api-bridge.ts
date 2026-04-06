@@ -11,9 +11,7 @@
  * - Maintains compatibility with existing Toolbox code
  */
 
-// Import the main app's API service (JavaScript)
-// @ts-ignore - JavaScript module without types
-import apiService from '../../src/utils/api/api-service.js'
+import { demoBackend } from './demo-backend'
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -122,11 +120,7 @@ export interface EndpointTestResults {
  * Wraps the JavaScript services with TypeScript interfaces
  */
 export class ApiBridge {
-  private jsService: any
-
-  constructor() {
-    this.jsService = apiService
-  }
+  private jsService = demoBackend
 
   // ========================================================================
   // ITEMS OPERATIONS
@@ -136,7 +130,7 @@ export class ApiBridge {
    * Fetch all items from the API
    */
   async fetchItems(options: { limit?: number } = { limit: 1000 }): Promise<any[]> {
-    return await this.jsService.toolboxItems.fetchItems(options)
+    return await this.jsService.fetchItems(options)
   }
 
   /**
@@ -148,7 +142,7 @@ export class ApiBridge {
     value: number, 
     notes?: string
   ): Promise<any> {
-    return await this.jsService.toolboxItems.updateItemQuantity(itemId, updateType, value, notes)
+    return await this.jsService.updateItemQuantity(itemId, updateType, value, notes)
   }
 
   /**
@@ -160,7 +154,7 @@ export class ApiBridge {
     notes?: string
     item_name?: string
   }): Promise<any> {
-    return await this.jsService.toolboxItems.recordItemOut(itemId, data)
+    return await this.jsService.recordItemOut(itemId, data)
   }
 
   /**
@@ -170,28 +164,29 @@ export class ApiBridge {
     checkout_by?: string
     notes?: string
   }): Promise<any> {
-    return await this.jsService.toolboxItems.bulkCheckout(items, options)
+    return await this.jsService.bulkCheckout(items, options)
   }
 
   /**
    * Get item images
    */
   async getItemImages(itemId: number): Promise<string[]> {
-    return await this.jsService.toolboxItems.getItemImages(itemId)
+    const images = await this.jsService.getItemImages(itemId)
+    return Array.isArray(images) ? images.map((image: any) => image.filename || image.url || String(image)) : []
   }
 
   /**
    * Upload item image
    */
   async uploadItemImage(itemId: number, imageFile: File): Promise<any> {
-    return await this.jsService.toolboxItems.uploadItemImage(itemId, imageFile)
+    return await this.jsService.uploadItemImage(itemId, imageFile)
   }
 
   /**
    * Delete item image
    */
   async deleteItemImage(itemId: number, imageUrl: string): Promise<any> {
-    return await this.jsService.toolboxItems.deleteItemImage(itemId, imageUrl)
+    return await this.jsService.deleteItemImage(itemId, imageUrl)
   }
 
   /**
@@ -219,7 +214,7 @@ export class ApiBridge {
    * @returns Promise<{ success: boolean, blob?: Blob, url?: string, error?: string }>
    */
   async getLatestItemImageBlob(itemId: number, forceRefresh = false): Promise<any> {
-    return await this.jsService.toolboxItems.getLatestItemImageBlob(itemId, forceRefresh)
+    return await this.jsService.getLatestItemImageBlob(itemId, forceRefresh)
   }
 
   /**
@@ -229,28 +224,28 @@ export class ApiBridge {
    * @returns Promise<{ success: boolean, blob?: Blob, url?: string, filename?: string, error?: string }>
    */
   async getItemImageBlob(itemId: number, filename: string, forceRefresh = false): Promise<any> {
-    return await this.jsService.toolboxItems.getItemImageBlob(itemId, filename, forceRefresh)
+    return await this.jsService.getItemImageBlob(itemId, filename, forceRefresh)
   }
 
   /**
    * Clear cached images for a specific item
    */
   clearItemImageCache(itemId: number): void {
-    this.jsService.toolboxItems.clearItemImageCache(itemId)
+    this.jsService.clearItemImageCache(itemId)
   }
 
   /**
    * Clear all cached images
    */
   clearAllImageCache(): void {
-    this.jsService.toolboxItems.clearAllImageCache()
+    this.jsService.clearAllImageCache()
   }
 
   /**
    * Get image cache statistics
    */
   getImageCacheStats(): any {
-    return this.jsService.toolboxItems.getImageCacheStats()
+    return this.jsService.getImageCacheStats()
   }
 
   // ========================================================================
@@ -261,49 +256,49 @@ export class ApiBridge {
    * Fetch all employees
    */
   async fetchEmployees(options?: { includeAllStatuses?: boolean }): Promise<any[]> {
-    return await this.jsService.toolboxEmployees.fetchEmployees(options)
+    return await this.jsService.fetchEmployees(options)
   }
 
   /**
    * Find employee by ID number
    */
   async findEmployeeByIdNumber(idNumber: string): Promise<any | null> {
-    return await this.jsService.toolboxEmployees.findEmployeeByIdNumber(idNumber)
+    return await this.jsService.findEmployeeByIdNumber(idNumber)
   }
 
   /**
    * Find employee by barcode
    */
   async findEmployeeByBarcode(barcode: string): Promise<any | null> {
-    return await this.jsService.toolboxEmployees.findEmployeeByBarcode(barcode)
+    return await this.jsService.findEmployeeByBarcode(barcode)
   }
 
   /**
    * Get employee by ID
    */
   async getEmployee(employeeId: number): Promise<any> {
-    return await this.jsService.toolboxEmployees.getEmployee(employeeId)
+    return await this.jsService.getEmployee(employeeId)
   }
 
   /**
    * Search employees by name or ID
    */
   async searchEmployees(query: string): Promise<any[]> {
-    return await this.jsService.toolboxEmployees.searchEmployees(query)
+    return await this.jsService.searchEmployees(query)
   }
 
   /**
    * Get active employees only
    */
   async getActiveEmployees(): Promise<any[]> {
-    return await this.jsService.toolboxEmployees.getActiveEmployees()
+    return await this.jsService.getActiveEmployees()
   }
 
   /**
    * Validate employee credentials
    */
   async validateEmployee(identifier: string, pin?: string | null): Promise<EmployeeValidationResult> {
-    return await this.jsService.toolboxEmployees.validateEmployee(identifier, pin)
+    return await this.jsService.validateEmployee(identifier, pin)
   }
 
   // ========================================================================
@@ -314,28 +309,28 @@ export class ApiBridge {
    * Fetch transactions with filters
    */
   async fetchTransactions(filters?: TransactionFilters): Promise<TransactionResponse> {
-    return await this.jsService.toolboxTransactions.fetchTransactions(filters)
+    return await this.jsService.fetchTransactions(filters)
   }
 
   /**
    * Fetch transaction statistics
    */
   async fetchTransactionStats(days: number = 30): Promise<TransactionStats> {
-    return await this.jsService.toolboxTransactions.fetchTransactionStats(days)
+    return await this.jsService.fetchTransactionStats(days)
   }
 
   /**
    * Fetch transactions for a specific user
    */
   async fetchUserTransactions(username: string, filters?: Omit<TransactionFilters, 'username'>): Promise<any> {
-    return await this.jsService.toolboxTransactions.fetchUserTransactions(username, filters)
+    return await this.jsService.fetchUserTransactions(username, filters)
   }
 
   /**
    * Create a new transaction log
    */
   async createTransactionLog(logData: TransactionLogData): Promise<any> {
-    return await this.jsService.toolboxTransactions.createTransactionLog(logData)
+    return await this.jsService.createTransactionLog(logData)
   }
 
   /**
@@ -357,21 +352,21 @@ export class ApiBridge {
     purpose?: string
     idBarcode?: string
   }): Promise<any> {
-    return await this.jsService.toolboxTransactions.createEnhancedLog(data)
+    return await this.jsService.createEnhancedLog(data)
   }
 
   /**
    * Delete a transaction log
    */
   async deleteTransactionLog(logId: number): Promise<any> {
-    return await this.jsService.toolboxTransactions.deleteTransactionLog(logId)
+    return await this.jsService.deleteTransactionLog(logId)
   }
 
   /**
    * Export transactions to CSV/Excel
    */
   async exportTransactions(filters?: TransactionFilters, format: 'csv' | 'excel' = 'csv'): Promise<Blob> {
-    return await this.jsService.toolboxTransactions.exportTransactions(filters, format)
+    return await this.jsService.exportTransactions(filters, format)
   }
 
   /**
@@ -389,42 +384,42 @@ export class ApiBridge {
    * Test connection to the API server
    */
   async testConnection(options?: { skipCache?: boolean }): Promise<boolean> {
-    return await this.jsService.toolboxConnection.testConnection(options)
+    return await this.jsService.testConnection(options)
   }
 
   /**
    * Get connection status
    */
   getConnectionStatus(): ConnectionStatus {
-    return this.jsService.toolboxConnection.getConnectionStatus()
+    return this.jsService.getConnectionStatus()
   }
 
   /**
    * Test connection with detailed diagnostics
    */
   async testConnectionDetailed(): Promise<DetailedConnectionResult> {
-    return await this.jsService.toolboxConnection.testConnectionDetailed()
+    return await this.jsService.testConnectionDetailed()
   }
 
   /**
    * Test multiple endpoints
    */
   async testEndpoints(): Promise<EndpointTestResults> {
-    return await this.jsService.toolboxConnection.testEndpoints()
+    return await this.jsService.testEndpoints()
   }
 
   /**
    * Reset connection cache
    */
   resetConnectionCache(): void {
-    this.jsService.toolboxConnection.resetCache()
+    this.jsService.resetCache()
   }
 
   /**
    * Update base URL
    */
   updateBaseUrl(newBaseUrl: string): void {
-    this.jsService.toolboxConnection.updateBaseUrl(newBaseUrl)
+    this.jsService.updateBaseUrl(newBaseUrl)
   }
 
   /**
@@ -447,7 +442,7 @@ export class ApiBridge {
     return {
       baseUrl: this.getBaseUrl(),
       isConnected: this.isConnected(),
-      ...this.jsService.toolboxConnection.getConnectionStatus()
+      ...this.jsService.getConnectionStatus()
     }
   }
 
@@ -462,14 +457,14 @@ export class ApiBridge {
    * Check if connected
    */
   isConnected(): boolean {
-    return this.jsService.toolboxConnection.getConnectionStatus().isConnected
+    return this.jsService.getConnectionStatus().isConnected
   }
 
   /**
    * Get base URL
    */
   getBaseUrl(): string {
-    return this.jsService.toolboxConnection.getConnectionStatus().baseUrl
+    return this.jsService.getConnectionStatus().baseUrl
   }
 }
 

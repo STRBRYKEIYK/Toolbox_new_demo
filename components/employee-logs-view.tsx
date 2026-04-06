@@ -8,8 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog"
 import { useToast } from "../hooks/use-toast"
 import { apiBridge } from "../lib/api-bridge"
 import { exportLogsToXLSX } from "../lib/export-utils"
-import { pollingManager } from "../../src/utils/api/websocket/polling-manager.jsx"
-import { SOCKET_EVENTS } from "../../src/utils/api/websocket/constants/events.js"
+import { pollingManager, SOCKET_EVENTS } from "../lib/demo-backend"
 
 interface Log {
   id: number | string

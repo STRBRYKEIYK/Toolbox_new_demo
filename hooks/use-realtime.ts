@@ -1,7 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-// Switch from socket.io to the shared polling manager used across apps
-import { pollingManager } from '../../src/utils/api/websocket/polling-manager.jsx'
-import { SOCKET_ROOMS } from '../../src/utils/api/websocket/constants/events.js'
+import { pollingManager, SOCKET_ROOMS } from '../lib/demo-backend'
 
 interface RealtimeEventData {
   [key: string]: any

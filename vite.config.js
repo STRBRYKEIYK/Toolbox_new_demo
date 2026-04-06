@@ -1,22 +1,18 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 import tailwindcss from '@tailwindcss/vite'
-import path from "path"
-import obfuscatorPlugin from 'rollup-plugin-obfuscator'
-import { obfuscatorOptions } from '../obfuscator.config.js'
+import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
-    // Code obfuscation - only in production builds
-    ...(mode === 'production' ? [obfuscatorPlugin(obfuscatorOptions)] : []),
   ],
 
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./"),
+      "@": fileURLToPath(new URL('./', import.meta.url)),
     },
   },
 

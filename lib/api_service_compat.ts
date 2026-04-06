@@ -61,6 +61,26 @@ class ItemsServiceCompat {
     return await apiBridge.bulkCheckout(items, options)
   }
 
+  async getLatestItemImageBlob(itemId: number, forceRefresh = false) {
+    return await apiBridge.getLatestItemImageBlob(itemId, forceRefresh)
+  }
+
+  async getItemImageBlob(itemId: number, filename: string, forceRefresh = false) {
+    return await apiBridge.getItemImageBlob(itemId, filename, forceRefresh)
+  }
+
+  clearItemImageCache(itemId: number) {
+    apiBridge.clearItemImageCache(itemId)
+  }
+
+  clearAllImageCache() {
+    apiBridge.clearAllImageCache()
+  }
+
+  getImageCacheStats() {
+    return apiBridge.getImageCacheStats()
+  }
+
   async getItemImages(itemId: number) {
     return await apiBridge.getItemImages(itemId)
   }
@@ -153,6 +173,10 @@ class TransactionsServiceCompat {
   async exportTransactions(filters?: TransactionFilters, format: 'csv' | 'excel' = 'csv') {
     return await apiBridge.exportTransactions(filters, format)
   }
+
+  async logTransaction(transactionData: TransactionLogData) {
+    return await apiBridge.logTransaction(transactionData)
+  }
 }
 
 /**
@@ -181,6 +205,12 @@ class ConnectionServiceCompat {
 
   updateBaseUrl(newBaseUrl: string): void {
     apiBridge.updateBaseUrl(newBaseUrl)
+  }
+
+  updateConfig(config: { baseUrl?: string }): void {
+    if (config.baseUrl) {
+      this.updateBaseUrl(config.baseUrl)
+    }
   }
 }
 

@@ -9,7 +9,7 @@ import {
 import { Input } from "../components/ui/input"
 import { Textarea } from "../components/ui/textarea"
 import { apiBridge } from "../lib/api-bridge"
-import * as mainapiService from "../../src/utils/api/api-service"
+import { demoBackend as mainapiService } from "../lib/demo-backend"
 import Swal from 'sweetalert2'
 
 
@@ -125,13 +125,11 @@ async function validateCheckoutAgainstJobOrders(
   const result: ValidationResult = { valid: true, errors: [], warnings: [], matchedJobs: assignedJobs }
 
   if (assignedJobs.length === 0) {
-    result.valid = false
-    result.errors.push({
+    result.warnings.push({
       item: 'ALL',
       type: 'no_active_job',
-      message: `${employee.fullName} has no open job order assignments. Only assigned employees may extract materials.`,
+      message: `${employee.fullName} has no open job order assignments. Demo mode will allow checkout to continue.`,
     })
-    return result
   }
 
   const assignedOps: Array<{ job: JobOrder; op: JobOperation }> = []
