@@ -396,9 +396,12 @@ npm run build  # Creates optimized production build in dist/
 
 ### Deployment Options
 
-1. **Static Hosting**: Deploy `dist/` folder to any static host (Netlify, Vercel, etc.)
-2. **Server Deployment**: Serve built files from your backend server
-3. **PWA Deployment**: Ensure HTTPS for service worker functionality
+1. **GitHub Pages**: Use the workflow in `.github/workflows/deploy-pages.yml` to publish the `dist/` folder.
+2. **Static Hosting**: Deploy `dist/` folder to any static host (Netlify, Vercel, etc.)
+3. **Server Deployment**: Serve built files from your backend server
+4. **PWA Deployment**: Ensure HTTPS for service worker functionality
+
+If you are using GitHub Pages, make sure the repository Pages source is set to GitHub Actions so the published site uses the built output instead of the repo root.
 
 ### Environment Configuration
 
