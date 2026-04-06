@@ -214,6 +214,21 @@ export function CheckoutModal({ isOpen, onClose, items, onConfirmCheckout, isCom
     try { const p = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '{}'); localStorage.setItem(OFFLINE_KEY, JSON.stringify({ ...p, employees: data, lastSync: Date.now() })) } catch { }
   }, [])
 
+  const createDemoOperator = useCallback((identifier: string, source: 'barcode' | 'manual'): Employee => {
+    const trimmed = identifier.trim()
+    return {
+      id: `demo-${source}-${trimmed || 'operator'}`,
+      firstName: 'Demo',
+      lastName: 'Operator',
+      fullName: `Demo Operator (${trimmed || 'unassigned'})`,
+      idNumber: trimmed || 'DEMO-OPERATOR',
+      idBarcode: trimmed || 'DEMO-OPERATOR',
+      position: 'Demo Mode User',
+      department: 'Portfolio Demo',
+      status: 'Active',
+    }
+  }, [])
+
   useEffect(() => {
     if (!isOpen) {
       setCurrentStep(1); setSelectedEmployee(null); setUserInput(""); setError(null)
@@ -273,7 +288,7 @@ export function CheckoutModal({ isOpen, onClose, items, onConfirmCheckout, isCom
     if (emp) {
       if (emp.status !== 'Active') { setError(`ID DEACTIVATED — ${emp.firstName} ${emp.lastName}.`); setUserInput(barcode); setSelectedEmployee(null) }
       else { setSelectedEmployee(emp); setUserInput(barcode); setError(null) }
-    } else { setError(`NO MATCH — Barcode [${barcode}] not in registry.`); setUserInput(barcode); setSelectedEmployee(null) }
+    } else { setSelectedEmployee(createDemoOperator(barcode, 'barcode')); setUserInput(barcode); setError(null) }
     setIsScanning(false)
   }
 
@@ -284,7 +299,7 @@ export function CheckoutModal({ isOpen, onClose, items, onConfirmCheckout, isCom
     if (emp) {
       if (emp.status !== 'Active') { setError(`ID DEACTIVATED — ${emp.firstName} ${emp.lastName}.`); setSelectedEmployee(null) }
       else { setSelectedEmployee(emp); setError(null) }
-    } else { setSelectedEmployee(null); if (value.trim().length >= 5) setError(`NO MATCH — ID [${value.trim()}] not found.`) }
+    } else { setSelectedEmployee(createDemoOperator(value, 'manual')); setError(null) }
   }
 
   // ── Confirm ────────────────────────────────────────────────────────────────
