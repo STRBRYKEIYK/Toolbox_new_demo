@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Search, Package, ShoppingCart, X, FileText, Menu } from "lucide-react"
+import { Search, Package, ShoppingCart, X, FileText, Home } from "lucide-react"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Badge } from "./ui/badge"
@@ -15,11 +15,13 @@ interface HeaderProps {
   currentView: ViewType
   onViewChange: (view: ViewType) => void
   onSearch?: (query: string) => void
+  onOpenStartPage?: () => void
 }
 
-export function Header({ cartItemCount, currentView, onViewChange, onSearch }: HeaderProps) {
+export function Header({ cartItemCount, currentView, onViewChange, onSearch, onOpenStartPage }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [showFirstTimeGuide, setShowFirstTimeGuide] = useState(false)
   const [products, setProducts] = useState<Array<{id: string, name: string, brand: string, itemType: string}>>([])
   const logoSrc = `${import.meta.env.BASE_URL}ToolBoxlogo.png`
   
@@ -75,6 +77,33 @@ export function Header({ cartItemCount, currentView, onViewChange, onSearch }: H
 
     return () => clearTimeout(delayedSearch)
   }, [searchQuery, onSearch])
+
+  useEffect(() => {
+    try {
+      const hidden = localStorage.getItem("toolbox-hide-onboarding") === "true"
+      setShowFirstTimeGuide(!hidden)
+    } catch {
+      setShowFirstTimeGuide(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleCheckoutSuccess = () => {
+      dismissGuide()
+    }
+
+    window.addEventListener("toolbox-checkout-success", handleCheckoutSuccess as EventListener)
+    return () => window.removeEventListener("toolbox-checkout-success", handleCheckoutSuccess as EventListener)
+  }, [])
+
+  const dismissGuide = () => {
+    setShowFirstTimeGuide(false)
+    try {
+      localStorage.setItem("toolbox-hide-onboarding", "true")
+    } catch {
+      // Ignore storage errors and keep runtime state only.
+    }
+  }
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value)
@@ -192,6 +221,20 @@ export function Header({ cartItemCount, currentView, onViewChange, onSearch }: H
           {/* Nav "Switches" */}
           <div className="flex items-center bg-zinc-950 p-1 rounded-lg border border-zinc-800 shadow-inner w-full sm:w-auto justify-between sm:justify-start">
             
+            {onOpenStartPage && (
+              <IndustrialTooltip content="Back to start page">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onOpenStartPage}
+                  className="h-9 px-3 sm:px-4 rounded-md font-black tracking-widest uppercase text-[10px] transition-all text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
+                >
+                  <Home className="w-4 h-4 mr-2" />
+                  <span>Start</span>
+                </Button>
+              </IndustrialTooltip>
+            )}
+
             <IndustrialTooltip content="Access Main Inventory">
               <Button
                 variant="ghost"
@@ -203,8 +246,8 @@ export function Header({ cartItemCount, currentView, onViewChange, onSearch }: H
                     : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
                 }`}
               >
-                <Package className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Items</span>
+                <Package className="w-4 h-4 mr-2" />
+                <span>Items</span>
               </Button>
             </IndustrialTooltip>
 
@@ -219,8 +262,8 @@ export function Header({ cartItemCount, currentView, onViewChange, onSearch }: H
                     : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
                 }`}
               >
-                <FileText className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Logs</span>
+                <FileText className="w-4 h-4 mr-2" />
+                <span>Logs</span>
               </Button>
             </IndustrialTooltip>
 
@@ -235,8 +278,8 @@ export function Header({ cartItemCount, currentView, onViewChange, onSearch }: H
                     : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
                 }`}
               >
-                <ShoppingCart className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Cart</span>
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                <span>Cart</span>
                 
                 {cartItemCount > 0 && (
                   <Badge className="absolute -top-1.5 -right-1.5 h-5 min-w-5 flex items-center justify-center p-0 text-[10px] font-mono bg-orange-600 text-white border-0 rounded shadow-[0_2px_5px_rgba(234,88,12,0.5)]">
@@ -249,6 +292,48 @@ export function Header({ cartItemCount, currentView, onViewChange, onSearch }: H
 
         </div>
       </div>
+
+      {showFirstTimeGuide && currentView === "dashboard" && (
+        <div className="border-t border-zinc-800/80 bg-zinc-950/95 px-3 lg:px-6 py-2.5">
+          <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row md:items-center gap-2.5 md:gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-mono text-zinc-400 uppercase tracking-wide">
+                Quick Start for New Users
+              </p>
+              <p className="text-xs text-zinc-300 mt-0.5">
+                1) Open Items, 2) Add products to Cart, 3) Go to Cart to checkout.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap md:justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onViewChange("dashboard")}
+                className="h-8 px-2.5 text-[11px] text-zinc-300 hover:text-white hover:bg-zinc-800"
+              >
+                Step 1: Items
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onViewChange("cart")}
+                className="h-8 px-2.5 text-[11px] text-zinc-300 hover:text-white hover:bg-zinc-800"
+              >
+                Step 2-3: Cart
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={dismissGuide}
+                className="h-8 px-2.5 text-[11px] text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800"
+              >
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   )
 }

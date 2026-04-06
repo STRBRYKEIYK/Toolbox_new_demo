@@ -37,7 +37,7 @@ export interface CartItem {
 
 
 export default function HomePage() {
-  const [isAppStarted, setIsAppStarted] = useState(true)
+  const [isAppStarted, setIsAppStarted] = useState(false)
   const [apiUrl, setApiUrl] = useState(DEFAULT_API_CONFIG.baseUrl)
   const [isApiConnected, setIsApiConnected] = useState(true)
   const [apiError, setApiError] = useState<string | null>(null)
@@ -123,6 +123,10 @@ export default function HomePage() {
 
   const handleStartApp = () => {
     setIsAppStarted(true)
+  }
+
+  const handleOpenStartPage = () => {
+    setIsAppStarted(false)
   }
 
   // Sync persistent cart state with local cart state
@@ -261,6 +265,7 @@ export default function HomePage() {
         currentView={currentView}
         onViewChange={(view: string) => setCurrentView(view as ViewType)}
         onSearch={setHeaderSearchQuery}
+        onOpenStartPage={handleOpenStartPage}
       />
 
       <main className="flex-1">

@@ -526,6 +526,7 @@ export function CartView({ items, onUpdateQuantity, onRemoveItem, onReturnToBrow
       setCheckedOutItemIds(itemsToCheckout.map((item) => item.id))
       setCheckoutData({ userId: employee.id.toString(), totalItems: checkoutTotalItems })
       setShowSuccessCountdown(true)
+      window.dispatchEvent(new CustomEvent('toolbox-checkout-success'))
     } catch (error) {
       toast({
         title: "SYSTEM FAULT",

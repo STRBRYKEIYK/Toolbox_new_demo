@@ -223,6 +223,7 @@ export function DashboardView({
   const [detectedBarcode, setDetectedBarcode] = useState<string | null>(null)
   const [detectedProduct, setDetectedProduct] = useState<Product | null>(null)
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
+  const [hasInitializedDataLoad, setHasInitializedDataLoad] = useState(false)
   const [useEnhancedCards] = useState(true)
 
   const { toast } = useToast()
@@ -480,24 +481,33 @@ export function DashboardView({
       setDataSource("cached");
       setLastFetchTime(timestamp);
       setIsLoadingData(false);
+      setHasInitializedDataLoad(true);
       const age = timestamp ? (Date.now() - timestamp.getTime()) / 60_000 : Infinity;
       if (age > 5) fetchProductsFromAPI(false);
     } else {
       // Silent auto-retry logic
-      let didSucceed = false;
       const tryFetch = async (attempt = 1) => {
         try {
           await fetchProductsFromAPI(true);
-          didSucceed = true;
         } catch (e) {
           if (attempt < 3) {
             setTimeout(() => tryFetch(attempt + 1), 1000 * attempt); // Exponential backoff
+          }
+        } finally {
+          if (attempt === 1) {
+            setHasInitializedDataLoad(true)
           }
         }
       };
       tryFetch();
     }
   }, [parentProducts, products.length]);
+
+  useEffect(() => {
+    if (products.length > 0) {
+      setHasInitializedDataLoad(true)
+    }
+  }, [products.length])
 
   useEffect(() => {
     if (onRefreshData) onRefreshData(handleRefreshData)
@@ -867,7 +877,7 @@ export function DashboardView({
   )
 
   // ── Empty state ───────────────────────────────────────────────────────────
-  if (!isLoadingData && (!products || products.length === 0)) {
+  if (hasInitializedDataLoad && !isLoadingData && (!products || products.length === 0)) {
     return (
       <div className="flex min-h-[400px] bg-card rounded-xl border items-center justify-center">
         <div className="text-center space-y-4 max-w-sm p-8">
