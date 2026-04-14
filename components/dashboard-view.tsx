@@ -238,6 +238,7 @@ export function DashboardView({
   const { setSearchLoading } = useLoading()
   const { selectedItems, selectAll, clearSelection } = useBulkSelection()
   const { navigateTo, checkoutModalOpen, barcodeQueueResetToken } = useToolboxAppState()
+  const isScannerActive = !checkoutModalOpen
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const isLocalStorageAvailable = () => {
@@ -1018,6 +1019,17 @@ export function DashboardView({
                   <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full tabular-nums">
                     {paginatedProducts.length} / {totalFilteredCount}
                   </span>
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] h-5 px-1.5 gap-1 ${
+                      isScannerActive
+                        ? "border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400"
+                        : "border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-400"
+                    }`}
+                  >
+                    <Scan className={`w-2.5 h-2.5 ${isScannerActive ? "animate-pulse" : ""}`} />
+                    {isScannerActive ? "Scanner Active" : "Scanner Paused"}
+                  </Badge>
                   {searchQuery && (
                     <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1">
                       <Search className="w-2.5 h-2.5" />
