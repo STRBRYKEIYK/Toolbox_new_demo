@@ -23,13 +23,21 @@ import { Card, CardContent } from "./ui/card"
 import { Badge } from "./ui/badge"
 import { useToast } from "../hooks/use-toast"
 import { apiBridge } from "../lib/api-bridge"
+import {
+  computeCategories,
+  computeDashboardStats,
+  computeItemsTitle,
+  filterSortAndPaginateProducts,
+  type DashboardSortKey,
+} from "../lib/dashboard-view-model"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog"
 import { exportToCSV, exportToXLSX, exportToJSON, prepareExportData } from "../lib/export-utils"
 import { EnhancedItemCard } from "./enhanced-item-card"
 import { BulkOperationsBar, useBulkSelection } from "./bulk-operations"
 import useGlobalBarcodeScanner from "../hooks/use-global-barcode-scanner"
-import BarcodeModal from "./barcode-modal"
+import BarcodeModal, { type BulkLineItem } from "./barcode-modal"
 import { useInventorySync } from "../hooks/useInventorySync"
+import { useToolboxAppState } from "../hooks/use-toolbox-app-state"
 import { IndustrialTooltip } from "./ui/tooltip"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -52,7 +60,7 @@ interface DashboardViewProps {
   setLastFetchTime?: React.Dispatch<React.SetStateAction<Date | null>>
 }
 
-type SortKey = "name-asc" | "name-desc" | "stock-high" | "stock-low"
+type SortKey = DashboardSortKey
 type ViewMode = "grid" | "list"
 
 const ITEMS_PER_PAGE = 50
@@ -222,13 +230,14 @@ export function DashboardView({
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false)
   const [detectedBarcode, setDetectedBarcode] = useState<string | null>(null)
   const [detectedProduct, setDetectedProduct] = useState<Product | null>(null)
-  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
+  const [appendQueueItem, setAppendQueueItem] = useState<BulkLineItem | null>(null)
   const [hasInitializedDataLoad, setHasInitializedDataLoad] = useState(false)
   const [useEnhancedCards] = useState(true)
 
   const { toast } = useToast()
   const { setSearchLoading } = useLoading()
   const { selectedItems, selectAll, clearSelection } = useBulkSelection()
+  const { navigateTo, checkoutModalOpen, barcodeQueueResetToken } = useToolboxAppState()
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const isLocalStorageAvailable = () => {
@@ -410,11 +419,7 @@ export function DashboardView({
       setDetectedProduct(result.product ?? null)
       if (isBarcodeModalOpen) {
         if (result.success && result.product && isAvailable(result.product, 1)) {
-          window.dispatchEvent(
-            new CustomEvent("scanned-barcode-append", {
-              detail: { item: { product: result.product, quantity: 1 } },
-            })
-          )
+          setAppendQueueItem({ product: result.product, quantity: 1 })
           toast({ title: "Item Queued", description: result.product.name })
         } else {
           toast({ title: "Not Found", description: `Barcode ${barcode} not found`, variant: "destructive" })
@@ -429,19 +434,10 @@ export function DashboardView({
   useGlobalBarcodeScanner(onGlobalBarcodeDetected, {
     minLength: 3,
     interKeyMs: 80,
-    enabled: !isCheckoutModalOpen,
+    enabled: !checkoutModalOpen,
   })
 
   // ── Effects ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const { isOpen } = (e as CustomEvent).detail || {}
-      if (typeof isOpen === "boolean") setIsCheckoutModalOpen(isOpen)
-    }
-    window.addEventListener("checkout-modal-state", handler as EventListener)
-    return () => window.removeEventListener("checkout-modal-state", handler as EventListener)
-  }, [])
-
   useEffect(() => {
     const t = setTimeout(() => {
       setIsSearching(false)
@@ -474,7 +470,7 @@ export function DashboardView({
   }, [apiUrl])
 
   useEffect(() => {
-    if (parentProducts !== undefined || products.length > 0) return;
+    if (products.length > 0) return;
     const { products: cached, timestamp } = loadProductsFromLocalStorage();
     if (cached?.length) {
       setProducts(cached);
@@ -526,37 +522,6 @@ export function DashboardView({
     setCurrentPage(1)
   }, [excludedCategories, showAvailable, showUnavailable, searchQuery, localSearchQuery, sortBy])
 
-  // ── Scanned-barcode event bus ─────────────────────────────────────────────
-  useEffect(() => {
-    const handler = (e: Event) => {
-      try {
-        const detail = (e as CustomEvent).detail || {}
-        if (detail.items && Array.isArray(detail.items)) {
-          const skipped: string[] = []
-          let added = 0
-          detail.items.forEach((li: any) => {
-            if (!li?.product) return
-            const qty = Number(li.quantity || 0)
-            if (qty <= 0) return
-            if (!isAvailable(li.product, qty)) { skipped.push(li.product.name); return }
-            onAddToCart(li.product, qty, true)
-            added++
-          })
-          if (skipped.length) toast({ title: "Items Skipped", description: skipped.join(", "), variant: "destructive" })
-          if (added) {
-            toast({ title: `${added} item(s) added`, description: "Cart updated" })
-            window.dispatchEvent(new CustomEvent("toolbox-navigate", { detail: { view: "cart" } }))
-          }
-          return
-        }
-        const barcode = String(detail.barcode || "").trim()
-        if (barcode) processBarcodeSubmit(barcode)
-      } catch {}
-    }
-    window.addEventListener("scanned-barcode", handler as EventListener)
-    return () => window.removeEventListener("scanned-barcode", handler as EventListener)
-  }, [processBarcodeSubmit, onAddToCart, toast])
-
   // ── Callbacks ─────────────────────────────────────────────────────────────
   const handleRefreshData = useCallback(() => fetchProductsFromAPI(true), [])
   const handleSaveSettings = useCallback(() => {
@@ -572,56 +537,23 @@ export function DashboardView({
   )
 
   // ── Derived data ──────────────────────────────────────────────────────────
-  const categories = useMemo(
-    () => ["all", ...new Set(products.map((p) => p.itemType))],
-    [products]
-  )
+  const categories = useMemo(() => computeCategories(products), [products])
 
   const { paginatedProducts, totalFilteredCount, hasMorePages } = useMemo(() => {
-    const effectiveQuery = searchQuery || localSearchQuery
-    const filtered = products.filter((p) => {
-      if (excludedCategories.has(p.itemType)) return false
-      if (!showAvailable && (p.status === "in-stock" || p.status === "low-stock")) return false
-      if (!showUnavailable && p.status === "out-of-stock") return false
-      if (effectiveQuery) {
-        const q = effectiveQuery.toLowerCase()
-        return (
-          p.name.toLowerCase().includes(q) ||
-          p.brand.toLowerCase().includes(q) ||
-          p.itemType.toLowerCase().includes(q) ||
-          p.location.toLowerCase().includes(q)
-        )
-      }
-      return true
+    return filterSortAndPaginateProducts({
+      products,
+      excludedCategories,
+      showAvailable,
+      showUnavailable,
+      searchQuery,
+      localSearchQuery,
+      sortBy,
+      currentPage,
+      itemsPerPage: ITEMS_PER_PAGE,
     })
-
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "name-asc": return a.name.localeCompare(b.name)
-        case "name-desc": return b.name.localeCompare(a.name)
-        case "stock-high": return b.balance - a.balance
-        case "stock-low": return a.balance - b.balance
-        default: return 0
-      }
-    })
-
-    const total = filtered.length
-    const toShow = currentPage * ITEMS_PER_PAGE
-    return {
-      paginatedProducts: filtered.slice(0, toShow),
-      totalFilteredCount: total,
-      hasMorePages: toShow < total,
-    }
   }, [products, excludedCategories, showAvailable, showUnavailable, searchQuery, localSearchQuery, sortBy, currentPage])
 
-  const itemsTitle = useMemo(() => {
-    const all = categories.filter((c) => c !== "all")
-    const included = all.filter((c) => !excludedCategories.has(c))
-    if (included.length === 0) return "No Items to Show"
-    if (excludedCategories.size === 0) return "All Items"
-    if (included.length === 1) return included[0]
-    return "Filtered Items"
-  }, [categories, excludedCategories])
+  const itemsTitle = useMemo(() => computeItemsTitle(categories, excludedCategories), [categories, excludedCategories])
 
   // Excluded chips = categories the user hid (zinc/neutral tone, shown under "Excluded:")
   const excludedChips = useMemo(
@@ -674,12 +606,7 @@ export function DashboardView({
   }
 
   // ── Stat summary for sidebar ──────────────────────────────────────────────
-  const stats = useMemo(() => ({
-    total: products.length,
-    inStock: products.filter((p) => p.status === "in-stock").length,
-    lowStock: products.filter((p) => p.status === "low-stock").length,
-    outOfStock: products.filter((p) => p.status === "out-of-stock").length,
-  }), [products])
+  const stats = useMemo(() => computeDashboardStats(products), [products])
 
   // ── Sidebar content (shared mobile + desktop) ─────────────────────────────
   const SidebarContent = () => (
@@ -907,7 +834,15 @@ export function DashboardView({
         open={isBarcodeModalOpen}
         initialValue={detectedBarcode ?? ""}
         products={detectedProduct ? [detectedProduct] : []}
-        onClose={() => { setIsBarcodeModalOpen(false); setDetectedProduct(null); setDetectedBarcode("") }}
+        appendItem={appendQueueItem}
+        onAppendItemHandled={() => setAppendQueueItem(null)}
+        queueResetToken={barcodeQueueResetToken}
+        onClose={() => {
+          setIsBarcodeModalOpen(false)
+          setDetectedProduct(null)
+          setDetectedBarcode("")
+          setAppendQueueItem(null)
+        }}
         onConfirm={(payload: any) => {
           if (payload?.items && Array.isArray(payload.items)) {
             const skipped: string[] = []
@@ -922,7 +857,8 @@ export function DashboardView({
             if (skipped.length) toast({ title: "Items Skipped", description: skipped.join(", "), variant: "destructive" })
             if (added > 0) {
               setIsBarcodeModalOpen(false); setDetectedProduct(null); setDetectedBarcode("")
-              window.dispatchEvent(new CustomEvent("toolbox-navigate", { detail: { view: "cart" } }))
+              setAppendQueueItem(null)
+              navigateTo("cart")
             }
             return
           }
@@ -932,7 +868,8 @@ export function DashboardView({
             if (detectedProduct) {
               handleModalAdd(detectedProduct, qty)
               setIsBarcodeModalOpen(false); setDetectedProduct(null); setDetectedBarcode("")
-              window.dispatchEvent(new CustomEvent("toolbox-navigate", { detail: { view: "cart" } }))
+              setAppendQueueItem(null)
+              navigateTo("cart")
             } else {
               processBarcodeSubmit(barcode)
             }

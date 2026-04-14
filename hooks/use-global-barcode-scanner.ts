@@ -50,14 +50,16 @@ export function useGlobalBarcodeScanner(onDetected: OnDetected, options?: { minL
 
       // Only accept printable single-character keys
       if (key.length === 1) {
-        if (!firstKeyTimeRef.current) firstKeyTimeRef.current = now
-        lastKeyTimeRef.current = now
-
-        // if time since last key is too long, reset buffer
-        const last = lastKeyTimeRef.current
-        if (last && firstKeyTimeRef.current && now - (last || now) > (opts.interKeyMs ?? 80)) {
-          // too slow - treat like human typing; start fresh buffer
+        const previousLast = lastKeyTimeRef.current
+        if (previousLast && now - previousLast > (opts.interKeyMs ?? 80)) {
+          // Slow typing cadence: reset and start a new candidate scan.
+          bufferRef.current = ''
+          firstKeyTimeRef.current = now
+        } else if (!firstKeyTimeRef.current) {
+          firstKeyTimeRef.current = now
         }
+
+        lastKeyTimeRef.current = now
 
         bufferRef.current += key
 

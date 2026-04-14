@@ -11,13 +11,14 @@ import { EnhancedToaster } from "../components/enhanced-toaster"
 import { useCartPersistence } from "../hooks/use-cart-persistence"
 import { useOfflineManager } from "../hooks/use-offline-manager"
 import { useTransactionRealtime, useAutoRefresh } from "../hooks/use-realtime"
+import { ToolboxAppStateProvider, type AppView } from "../hooks/use-toolbox-app-state"
 import { apiBridge } from "../lib/api-bridge"
 import { DEFAULT_API_CONFIG } from "../lib/api-config"
 import { KeyboardShortcuts } from "../components/keyboard-shortcuts"
 // import { BackToTop } from "../components/back-to-top"
 import type { Product } from "../lib/barcode-scanner"
 
-export type ViewType = "dashboard" | "cart" | "item-detail" | "logs"
+export type ViewType = AppView
 
 export interface CartItem {
   id: string
@@ -224,21 +225,6 @@ export default function HomePage() {
 
   const totalCartItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
-  // Listen for navigation requests from components (e.g., modal requesting to open cart view)
-  useEffect(() => {
-    const navHandler = (e: Event) => {
-      try {
-        const detail = (e as CustomEvent).detail || {}
-        const view = detail.view
-        if (view === 'cart') setCurrentView('cart')
-      } catch (err) {
-        console.error('navigation event handler error', err)
-      }
-    }
-    window.addEventListener('toolbox-navigate', navHandler as EventListener)
-    return () => window.removeEventListener('toolbox-navigate', navHandler as EventListener)
-  }, [])
-
   // Check if we have cached data available
   const offlineData = getOfflineData()
   const hasCachedData = offlineData.products.length > 0
@@ -259,72 +245,74 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950">
-      <Header
-        cartItemCount={totalCartItems}
-        currentView={currentView}
-        onViewChange={(view: string) => setCurrentView(view as ViewType)}
-        onSearch={setHeaderSearchQuery}
-        onOpenStartPage={handleOpenStartPage}
-      />
+    <ToolboxAppStateProvider currentView={currentView} onNavigate={setCurrentView}>
+      <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950">
+        <Header
+          cartItemCount={totalCartItems}
+          currentView={currentView}
+          onViewChange={(view: string) => setCurrentView(view as ViewType)}
+          onSearch={setHeaderSearchQuery}
+          onOpenStartPage={handleOpenStartPage}
+        />
 
-      <main className="flex-1">
-        <div className="max-w-[1600px] mx-auto px-2 lg:px-3">
-          {/* Keep DashboardView mounted but conditionally visible */}
-          <div className={currentView === "dashboard" ? "block" : "hidden"}>
-            <DashboardView 
-              onAddToCart={addToCart} 
-              onViewItem={viewItemDetail} 
-              searchQuery={headerSearchQuery}
-              onRefreshData={(fn) => setDashboardRefresh(() => fn)}
-              apiUrl={apiUrl}
-              onApiUrlChange={handleApiUrlChange}
-              isConnected={isApiConnected}
-              // Pass products state from parent
-              products={products}
-              setProducts={setProducts}
-              isLoadingProducts={isLoadingProducts}
-              setIsLoadingProducts={setIsLoadingProducts}
-              dataSource={productsDataSource}
-              setDataSource={setProductsDataSource}
-              lastFetchTime={productsLastFetchTime}
-              setLastFetchTime={setProductsLastFetchTime}
-            />
+        <main className="flex-1">
+          <div className="max-w-[1600px] mx-auto px-2 lg:px-3">
+            {/* Keep DashboardView mounted but conditionally visible */}
+            <div className={currentView === "dashboard" ? "block" : "hidden"}>
+              <DashboardView 
+                onAddToCart={addToCart} 
+                onViewItem={viewItemDetail} 
+                searchQuery={headerSearchQuery}
+                onRefreshData={(fn) => setDashboardRefresh(() => fn)}
+                apiUrl={apiUrl}
+                onApiUrlChange={handleApiUrlChange}
+                isConnected={isApiConnected}
+                // Pass products state from parent
+                products={products}
+                setProducts={setProducts}
+                isLoadingProducts={isLoadingProducts}
+                setIsLoadingProducts={setIsLoadingProducts}
+                dataSource={productsDataSource}
+                setDataSource={setProductsDataSource}
+                lastFetchTime={productsLastFetchTime}
+                setLastFetchTime={setProductsLastFetchTime}
+              />
+            </div>
+
+            {currentView === "cart" && (
+              <CartView
+                items={cartItems}
+                onUpdateQuantity={updateCartItemQuantity}
+                onRemoveItem={removeFromCart}
+                onReturnToBrowsing={() => setCurrentView("dashboard")}
+                onRefreshData={dashboardRefresh ?? undefined}
+              />
+            )}
+
+            {currentView === "item-detail" && selectedProduct && (
+              <ItemDetailView
+                product={selectedProduct}
+                onAddToCart={addToCart}
+                onBack={() => setCurrentView("dashboard")}
+              />
+            )}
+
+            {currentView === "logs" && (
+              <EmployeeLogsView className="h-full" />
+            )}
           </div>
+        </main>
 
-          {currentView === "cart" && (
-            <CartView
-              items={cartItems}
-              onUpdateQuantity={updateCartItemQuantity}
-              onRemoveItem={removeFromCart}
-              onReturnToBrowsing={() => setCurrentView("dashboard")}
-              onRefreshData={dashboardRefresh ?? undefined}
-            />
-          )}
-
-          {currentView === "item-detail" && selectedProduct && (
-            <ItemDetailView
-              product={selectedProduct}
-              onAddToCart={addToCart}
-              onBack={() => setCurrentView("dashboard")}
-            />
-          )}
-
-          {currentView === "logs" && (
-            <EmployeeLogsView className="h-full" />
-          )}
-        </div>
-      </main>
-
-      <EnhancedToaster />
-      
-      <KeyboardShortcuts
-        onViewChange={(view: string) => setCurrentView(view as ViewType)}
-        onRefreshData={dashboardRefresh || (() => {})}
-        cartItemCount={totalCartItems}
-      />
-      
-      {/* <BackToTop /> */}
-    </div>
+        <EnhancedToaster />
+        
+        <KeyboardShortcuts
+          onViewChange={(view: string) => setCurrentView(view as ViewType)}
+          onRefreshData={dashboardRefresh || (() => {})}
+          cartItemCount={totalCartItems}
+        />
+        
+        {/* <BackToTop /> */}
+      </div>
+    </ToolboxAppStateProvider>
   )
 }

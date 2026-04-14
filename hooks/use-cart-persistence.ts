@@ -19,7 +19,24 @@ import {
 import type { Product } from '../lib/barcode-scanner'
 import { useToast } from './use-toast'
 
-const CART_SYNC_EVENT = 'toolbox-cart-updated'
+const cartSyncSubscribers = new Set<() => void>()
+
+function notifyCartSyncSubscribers() {
+  cartSyncSubscribers.forEach((subscriber) => {
+    try {
+      subscriber()
+    } catch (error) {
+      console.error('Cart sync subscriber failed:', error)
+    }
+  })
+}
+
+function subscribeCartSync(subscriber: () => void) {
+  cartSyncSubscribers.add(subscriber)
+  return () => {
+    cartSyncSubscribers.delete(subscriber)
+  }
+}
 
 export interface UseCartPersistenceReturn {
   // State
@@ -63,8 +80,7 @@ export function useCartPersistence(): UseCartPersistenceReturn {
   const { toast } = useToast()
 
   const emitCartSync = useCallback(() => {
-    if (typeof window === 'undefined') return
-    window.dispatchEvent(new CustomEvent(CART_SYNC_EVENT))
+    notifyCartSyncSubscribers()
   }, [])
 
   // Load initial cart state
@@ -255,9 +271,7 @@ export function useCartPersistence(): UseCartPersistenceReturn {
   }, [])
 
   useEffect(() => {
-    const onCartSync = () => refreshCart()
-    window.addEventListener(CART_SYNC_EVENT, onCartSync)
-    return () => window.removeEventListener(CART_SYNC_EVENT, onCartSync)
+    return subscribeCartSync(refreshCart)
   }, [refreshCart])
 
   const getCartSummary = useCallback(() => {

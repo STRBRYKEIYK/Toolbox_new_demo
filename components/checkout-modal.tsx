@@ -9,7 +9,7 @@ import {
 import { Input } from "../components/ui/input"
 import { Textarea } from "../components/ui/textarea"
 import { apiBridge } from "../lib/api-bridge"
-import { demoBackend as mainapiService } from "../lib/demo-backend"
+import { useCheckoutOrchestration } from "../hooks/use-checkout-orchestration"
 import Swal from 'sweetalert2'
 
 
@@ -47,7 +47,12 @@ interface ItemJobAssignment {
 }
 interface CheckoutModalProps {
   isOpen: boolean; onClose: () => void; items: CartItem[]
-  onConfirmCheckout: (employee: Employee, purpose?: string, meta?: { requestsSaved?: boolean; requestRefs?: string[] }) => void
+  onConfirmCheckout: (employee: Employee, purpose?: string, meta?: {
+    requestsSaved?: boolean
+    requestRefs?: string[]
+    inventorySaved?: boolean
+    transactionSaved?: boolean
+  }) => void
   isCommitting?: boolean
 }
 
@@ -102,96 +107,6 @@ function SectionHeader({ label, icon: Icon, status }: { label: string; icon?: an
   )
 }
 
-// ─── Core validation against job order operations ────────────────────────────
-async function validateCheckoutAgainstJobOrders(
-  employee: Employee,
-  items: CartItem[]
-): Promise<ValidationResult> {
-  const res = await mainapiService.jobOrders.getJobOrders({ status: 'open' }) as any
-  const all: any[] = Array.isArray(res?.items) ? res.items : Array.isArray(res) ? res : []
-
-  const detailed: JobOrder[] = await Promise.all(
-    all.map(j => mainapiService.jobOrders.getJobOrder(j.id).catch(() => j))
-  ) as JobOrder[]
-
-  const empId = String(employee.id)
-
-  const assignedJobs = detailed.filter(job =>
-    (job.operations || []).some(op =>
-      (op.employees || []).some(e => String(e.employee_id) === empId)
-    )
-  )
-
-  const result: ValidationResult = { valid: true, errors: [], warnings: [], matchedJobs: assignedJobs }
-
-  if (assignedJobs.length === 0) {
-    result.warnings.push({
-      item: 'ALL',
-      type: 'no_active_job',
-      message: `${employee.fullName} has no open job order assignments. Demo mode will allow checkout to continue.`,
-    })
-  }
-
-  const assignedOps: Array<{ job: JobOrder; op: JobOperation }> = []
-  assignedJobs.forEach(job => {
-    ;(job.operations || []).forEach(op => {
-      if ((op.employees || []).some(e => String(e.employee_id) === empId)) {
-        assignedOps.push({ job, op })
-      }
-    })
-  })
-
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
-
-  items.forEach(item => {
-    const iNorm = norm(item.name)
-
-    const match = assignedOps.find(({ op }) => {
-      const oNorm = norm(op.name)
-      if (oNorm.includes(iNorm) || iNorm.includes(oNorm)) return true
-      const opMaterials: any[] = (op as any).materials || []
-      return opMaterials.some(mat => {
-        const mNorm = norm(mat.name || '')
-        const idMatch = mat.item_no && String(mat.item_no) === String(item.id)
-        return mNorm.includes(iNorm) || iNorm.includes(mNorm) || idMatch
-      })
-    })
-
-    if (!match) {
-      result.warnings.push({
-        item: item.name,
-        type: 'no_matching_op',
-        message: `"${item.name}" doesn't match any assigned operation or material. Verify this material is for the correct job.`,
-      })
-      return
-    }
-
-    const { op } = match
-
-    if (op.completed) {
-      result.warnings.push({
-        item: item.name,
-        type: 'op_complete',
-        message: `Operation "${op.name}" is already marked complete. Are you sure this material is still needed?`,
-      })
-      return
-    }
-
-    if (op.expected_hours && op.expected_hours > 0 && op.shifts) {
-      const rendered = op.shifts.reduce((s, sh) => s + (parseFloat(String(sh.hours_rendered)) || 0), 0)
-      if (rendered >= op.expected_hours * 0.9) {
-        result.warnings.push({
-          item: item.name,
-          type: 'op_nearly_done',
-          message: `Operation "${op.name}" is ${Math.round((rendered / op.expected_hours) * 100)}% through its expected hours. Confirm material is still required.`,
-        })
-      }
-    }
-  })
-
-  return result
-}
-
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 export function CheckoutModal({ isOpen, onClose, items, onConfirmCheckout, isCommitting = false }: CheckoutModalProps) {
   const [currentStep, setCurrentStep] = useState<WizardStep>(1)
@@ -206,6 +121,7 @@ export function CheckoutModal({ isOpen, onClose, items, onConfirmCheckout, isCom
   const [saving, setSaving] = useState(false)
   const [loadingStage, setLoadingStage] = useState<LoadingStage>(null)
   const [detectedJobs, setDetectedJobs] = useState<JobOrder[]>([])
+  const { getAssignedJobOrders, validateCheckoutAgainstJobOrders, submitCheckout } = useCheckoutOrchestration()
 
   const getCachedEmployees = useCallback((): Employee[] => {
     try { const p = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '{}'); return Array.isArray(p?.employees) ? p.employees : [] } catch { return [] }
@@ -252,25 +168,21 @@ export function CheckoutModal({ isOpen, onClose, items, onConfirmCheckout, isCom
   }, [isOpen, inputMethod, employees, currentStep])
 
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('checkout-modal-state', { detail: { isOpen } }))
-  }, [isOpen])
-
-  useEffect(() => {
     if (!selectedEmployee || currentStep < 3) return
+    let cancelled = false
     setDetectedJobs([])
     ;(async () => {
       try {
-        const res = await mainapiService.jobOrders.getJobOrders({ status: 'open' }) as any
-        const all: any[] = Array.isArray(res?.items) ? res.items : Array.isArray(res) ? res : []
-        const detailed = await Promise.all(all.map(j => mainapiService.jobOrders.getJobOrder(j.id).catch(() => j))) as JobOrder[]
-        const empId = String(selectedEmployee.id)
-        const assigned = detailed.filter(j =>
-          (j.operations || []).some(op => (op.employees || []).some(e => String(e.employee_id) === empId))
-        )
-        setDetectedJobs(assigned)
+        const assigned = await getAssignedJobOrders(selectedEmployee)
+        if (!cancelled) {
+          setDetectedJobs(assigned)
+        }
       } catch { /* silent */ }
     })()
-  }, [selectedEmployee, currentStep])
+    return () => {
+      cancelled = true
+    }
+  }, [selectedEmployee, currentStep, getAssignedJobOrders])
 
   const loadEmployees = async () => {
     setLoadingEmployees(true); setError(null)
@@ -972,84 +884,14 @@ export function CheckoutModal({ isOpen, onClose, items, onConfirmCheckout, isCom
 
       // ── Step D: Submit ─────────────────────────────────────────────────────
       setLoadingStage('submitting-request')
+      const checkoutMeta = await submitCheckout({
+        employee: selectedEmployee,
+        items,
+        purpose: purpose.trim() || undefined,
+        itemAssignments,
+      })
 
-      let requestsSaved = false
-      let requestRefs: string[] = []
-
-      try {
-        const requests = items.map((item, idx) => {
-          const assignment = itemAssignments[idx]
-          return {
-            employee_uid:       selectedEmployee.id,
-            employee_barcode:   selectedEmployee.idBarcode,
-            employee_name:      selectedEmployee.fullName,
-            material_name:      item.name,
-            quantity_requested: item.quantity,
-            unit_of_measure:    'pcs',
-            item_no:            item.id,
-            item_description:   `${item.brand} - ${item.itemType}`,
-            purpose:            purpose.trim() || 'Material extraction request',
-            project_name:       assignment?.jobOrderLabel ?? null,
-            job_order_id:       assignment?.jobOrderId    ?? null,
-            request_notes:      `Requested via Toolbox. Balance at request time: ${item.balance}`,
-          }
-        })
-        const response = await mainapiService.checkoutRequests.bulkCreateRequests(requests)
-        requestsSaved = !!response?.success
-        requestRefs   = response?.request_refs ?? []
-        if (!requestsSaved) console.warn('[CheckoutModal] Request failed:', response?.error)
-      } catch (err) {
-        console.warn('[CheckoutModal] Request failed:', (err as Error).message)
-      }
-
-      try {
-        const checkouts = items.map((item, idx) => {
-          const assignment = itemAssignments[idx]
-          return {
-            employee_uid:         selectedEmployee.id,
-            employee_barcode:     selectedEmployee.idBarcode,
-            employee_name:        selectedEmployee.fullName,
-            material_name:        item.name,
-            quantity_checked_out: item.quantity,
-            unit_of_measure:      'pcs',
-            item_no:              item.id,
-            item_description:     `${item.brand} - ${item.itemType}`,
-            purpose:              purpose.trim() || 'Material extraction request',
-            project_name:         assignment?.jobOrderLabel ?? null,
-          }
-        })
-        const invResult = await mainapiService.employeeInventory.bulkCheckout(checkouts, null)
-        if (!invResult?.success) console.warn('[CheckoutModal] Inventory tracking failed:', invResult?.error)
-      } catch (err) {
-        console.warn('[CheckoutModal] Inventory tracking failed:', (err as Error).message)
-      }
-
-      try {
-        const itemSummary       = items.map(i => `${i.name} x${i.quantity}`).join(', ')
-        const itemNos           = [...new Set(items.map(i => String(i.id)))].join(';')
-        const assignmentSummary = itemAssignments
-          .filter(a => a.jobOrderLabel)
-          .map(a => `${a.itemName} → ${a.jobOrderLabel}`)
-          .join('; ')
-
-        await mainapiService.employeeLogs.createEmployeeLog({
-          username:   selectedEmployee.fullName,
-          id_number:  selectedEmployee.idNumber,
-          id_barcode: selectedEmployee.idBarcode,
-          details:    `Checkout: ${items.length} items - ${itemSummary}${assignmentSummary ? ` | Assignments: ${assignmentSummary}` : ''}`.slice(0, 500),
-          purpose:    purpose.trim() || 'Material extraction request',
-          item_no:    itemNos,
-          items_json: JSON.stringify(items.map((i, idx) => ({
-            id: i.id, name: i.name, qty: i.quantity,
-            job_order_id: itemAssignments[idx]?.jobOrderId ?? null,
-          }))),
-          status: 'ACTIVE',
-        })
-      } catch (err) {
-        console.warn('[CheckoutModal] Employee log write failed:', (err as Error).message)
-      }
-
-      onConfirmCheckout(selectedEmployee, purpose.trim() || undefined, { requestsSaved, requestRefs })
+      onConfirmCheckout(selectedEmployee, purpose.trim() || undefined, checkoutMeta)
 
     } catch (err) {
       await Swal.fire({

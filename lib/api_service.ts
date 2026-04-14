@@ -29,7 +29,7 @@ export class ApiServices {
     this.config = {
       ...this.config,
       ...newConfig,
-      isConnected: true,
+      isConnected: newConfig.isConnected ?? demoBackend.getConnectionStatus().isConnected,
     }
 
     if (newConfig.baseUrl) {
@@ -43,7 +43,7 @@ export class ApiServices {
   getConfig(): ApiConfig {
     return {
       baseUrl: demoBackend.getConnectionStatus().baseUrl,
-      isConnected: true,
+      isConnected: demoBackend.getConnectionStatus().isConnected,
     }
   }
 
@@ -73,8 +73,24 @@ export class ApiServices {
    * Commit item changes to the API
    */
   async commitItemChanges(items: any[]): Promise<boolean> {
-    void items
-    return true
+    if (!Array.isArray(items)) return false
+
+    try {
+      for (const item of items) {
+        const itemId = Number(item?.id ?? item?.item_no)
+        const balance = Number(item?.balance)
+
+        if (!Number.isFinite(itemId) || !Number.isFinite(balance)) {
+          continue
+        }
+
+        await demoBackend.updateItemQuantity(itemId, 'set_balance', balance)
+      }
+      return true
+    } catch (error) {
+      console.error('[ApiServices] commitItemChanges failed:', error)
+      return false
+    }
   }
 
   /**
@@ -173,7 +189,7 @@ export class ApiServices {
    * Check if the API is currently connected
    */
   isConnected(): boolean {
-    return true
+    return demoBackend.getConnectionStatus().isConnected
   }
 
   /**

@@ -27,9 +27,9 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              const root = document.documentElement;
               try {
                 const theme = localStorage.getItem('toolbox-theme') || 'dark';
-                const root = document.documentElement;
                 
                 if (theme === 'system') {
                   const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

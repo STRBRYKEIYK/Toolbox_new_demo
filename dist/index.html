@@ -19,9 +19,9 @@
       // Prevent flash of unstyled content by setting theme before page renders
       // Default to dark mode
       (function() {
+        const root = document.documentElement;
         try {
           const theme = localStorage.getItem('toolbox-theme') || 'dark';
-          const root = document.documentElement;
           
           if (theme === 'system') {
             const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -45,7 +45,7 @@
     <link rel="manifest" href="/Toolbox_new_demo/manifest.json" />
     <link rel="apple-touch-icon" href="/Toolbox_new_demo/ToolBoxlogo.png" />
     <title>Toolbox Inventory - Warehouse Management</title>
-    <script type="module" crossorigin src="/Toolbox_new_demo/assets/index-DmIzM3WG.js"></script>
+    <script type="module" crossorigin src="/Toolbox_new_demo/assets/index-j-Ptv8yH.js"></script>
     <link rel="modulepreload" crossorigin href="/Toolbox_new_demo/assets/react-vendor-BYA32aEE.js">
     <link rel="modulepreload" crossorigin href="/Toolbox_new_demo/assets/ui-vendor-BT5r7Co2.js">
     <link rel="stylesheet" crossorigin href="/Toolbox_new_demo/assets/index-BY9f1vgQ.css">

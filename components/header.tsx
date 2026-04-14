@@ -8,6 +8,7 @@ import { Badge } from "./ui/badge"
 import { ThemeToggle } from "./theme-toggle"
 import { TipsAndTricks } from "./tips-and-tricks"
 import { IndustrialTooltip } from "./ui/tooltip"
+import { useToolboxAppState } from "../hooks/use-toolbox-app-state"
 import type { ViewType } from "../app/page"
 
 interface HeaderProps {
@@ -23,6 +24,7 @@ export function Header({ cartItemCount, currentView, onViewChange, onSearch, onO
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [showFirstTimeGuide, setShowFirstTimeGuide] = useState(false)
   const [products, setProducts] = useState<Array<{id: string, name: string, brand: string, itemType: string}>>([])
+  const { checkoutSuccessCount } = useToolboxAppState()
   const logoSrc = `${import.meta.env.BASE_URL}ToolBoxlogo.png`
   
   // Load products for autocomplete
@@ -88,13 +90,10 @@ export function Header({ cartItemCount, currentView, onViewChange, onSearch, onO
   }, [])
 
   useEffect(() => {
-    const handleCheckoutSuccess = () => {
+    if (checkoutSuccessCount > 0) {
       dismissGuide()
     }
-
-    window.addEventListener("toolbox-checkout-success", handleCheckoutSuccess as EventListener)
-    return () => window.removeEventListener("toolbox-checkout-success", handleCheckoutSuccess as EventListener)
-  }, [])
+  }, [checkoutSuccessCount])
 
   const dismissGuide = () => {
     setShowFirstTimeGuide(false)

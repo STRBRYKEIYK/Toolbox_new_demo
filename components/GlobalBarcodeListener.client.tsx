@@ -2,22 +2,21 @@
 
 import { useCallback, useState, useEffect } from 'react'
 import useGlobalBarcodeScanner from '../hooks/use-global-barcode-scanner'
-import BarcodeModal from './barcode-modal'
+import BarcodeModal, { type BulkLineItem } from './barcode-modal'
 
-export default function GlobalBarcodeListener() {
+interface GlobalBarcodeListenerProps {
+  enabled?: boolean
+  isCheckoutOpen?: boolean
+  onScanned: (payload: { barcode?: string; quantity?: number } | { items: BulkLineItem[] }) => void
+}
+
+export default function GlobalBarcodeListener({
+  enabled = true,
+  isCheckoutOpen = false,
+  onScanned,
+}: GlobalBarcodeListenerProps) {
   const [modalOpen, setModalOpen] = useState(false)
   const [pendingValue, setPendingValue] = useState('')
-  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
-
-  // Listen for checkout modal state changes
-  useEffect(() => {
-    const handleCheckoutModalChange = (event: CustomEvent) => {
-      setIsCheckoutModalOpen(event.detail.isOpen)
-    }
-
-    window.addEventListener('checkout-modal-state', handleCheckoutModalChange as EventListener)
-    return () => window.removeEventListener('checkout-modal-state', handleCheckoutModalChange as EventListener)
-  }, [])
 
   const handleDetected = useCallback((value: string) => {
     // Show modal with scanned value
@@ -30,13 +29,18 @@ export default function GlobalBarcodeListener() {
     minLength: 3, 
     interKeyMs: 80, 
     maxScanDurationMs: 1200,
-    enabled: !isCheckoutModalOpen 
+    enabled: enabled && !isCheckoutOpen 
   })
 
   const handleConfirm = (payload: any) => {
-    // Forward whatever the modal sends (single barcode or bulk items) to global listeners
-    window.dispatchEvent(new CustomEvent('scanned-barcode', { detail: payload }))
+    onScanned(payload)
   }
+
+  useEffect(() => {
+    if (isCheckoutOpen) {
+      setModalOpen(false)
+    }
+  }, [isCheckoutOpen])
 
   return (
     <BarcodeModal open={modalOpen} initialValue={pendingValue} onClose={() => setModalOpen(false)} onConfirm={handleConfirm} />

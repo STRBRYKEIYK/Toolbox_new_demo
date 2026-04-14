@@ -49,6 +49,25 @@ const OFFLINE_STORAGE_KEY = 'toolbox-offline-data'
 const OFFLINE_QUEUE_KEY = 'toolbox-offline-queue'
 const MAX_RETRIES = 3
 
+const offlineQueueSubscribers = new Set<() => void>()
+
+function notifyOfflineQueueSubscribers() {
+  offlineQueueSubscribers.forEach((subscriber) => {
+    try {
+      subscriber()
+    } catch (error) {
+      console.error('[Offline] Queue subscriber failed:', error)
+    }
+  })
+}
+
+function subscribeOfflineQueueUpdates(subscriber: () => void) {
+  offlineQueueSubscribers.add(subscriber)
+  return () => {
+    offlineQueueSubscribers.delete(subscriber)
+  }
+}
+
 export function useOfflineManager() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
     isOnline: true,
@@ -65,9 +84,7 @@ export function useOfflineManager() {
   const persistQueue = useCallback((queue: OfflineQueue[]) => {
     try {
       localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue))
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('toolbox-offline-queue-updated'))
-      }
+      notifyOfflineQueueSubscribers()
     } catch (error) {
       console.error('[Offline] Failed to save queue:', error)
     }
@@ -361,16 +378,14 @@ export function useOfflineManager() {
       }
     }
 
-    const handleQueueUpdated = () => {
-      loadOfflineQueue()
-    }
+    const handleQueueUpdated = () => loadOfflineQueue()
+    const unsubscribeQueueUpdates = subscribeOfflineQueueUpdates(handleQueueUpdated)
 
     if (offlineQueue.length === 0 || syncStatus.syncInProgress) {
       window.addEventListener('storage', handleStorageQueueUpdate)
-      window.addEventListener('toolbox-offline-queue-updated', handleQueueUpdated as EventListener)
       return () => {
         window.removeEventListener('storage', handleStorageQueueUpdate)
-        window.removeEventListener('toolbox-offline-queue-updated', handleQueueUpdated as EventListener)
+        unsubscribeQueueUpdates()
       }
     }
 
@@ -381,12 +396,11 @@ export function useOfflineManager() {
     }, 1000)
 
     window.addEventListener('storage', handleStorageQueueUpdate)
-    window.addEventListener('toolbox-offline-queue-updated', handleQueueUpdated as EventListener)
 
     return () => {
       clearTimeout(timeout)
       window.removeEventListener('storage', handleStorageQueueUpdate)
-      window.removeEventListener('toolbox-offline-queue-updated', handleQueueUpdated as EventListener)
+      unsubscribeQueueUpdates()
     }
   }, [syncStatus.isOnline, syncStatus.syncInProgress, offlineQueue.length, processOfflineQueue])
 

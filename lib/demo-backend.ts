@@ -366,6 +366,10 @@ function sortLogs(logs: DemoLogRecord[]): DemoLogRecord[] {
   })
 }
 
+function isDemoOnline(): boolean {
+  return typeof navigator === 'undefined' ? true : navigator.onLine
+}
+
 function getJobOrderSummaryText(items: Array<{ name: string; quantity: number }>): string {
   return items.map((item) => `${item.name} x${item.quantity}`).join(', ')
 }
@@ -665,24 +669,45 @@ export const demoBackend = {
 
   async testConnection() {
     state.lastTestTime = Date.now()
-    return true
+    return isDemoOnline()
   },
 
   getConnectionStatus(): DemoConnectionStatus {
-    return { isConnected: true, lastTestTime: state.lastTestTime, lastTestDate: state.lastTestTime ? new Date(state.lastTestTime).toISOString() : null, timeSinceLastTest: state.lastTestTime ? Date.now() - state.lastTestTime : null, baseUrl: state.baseUrl }
+    return {
+      isConnected: isDemoOnline(),
+      lastTestTime: state.lastTestTime,
+      lastTestDate: state.lastTestTime ? new Date(state.lastTestTime).toISOString() : null,
+      timeSinceLastTest: state.lastTestTime ? Date.now() - state.lastTestTime : null,
+      baseUrl: state.baseUrl
+    }
   },
 
   async testConnectionDetailed(): Promise<DemoDetailedConnectionResult> {
     const now = new Date().toISOString()
-    return { success: true, baseUrl: state.baseUrl, timestamp: now, responseTime: 12, status: 200, statusText: 'OK', error: null, details: { items: state.items.length, employees: state.employees.length, logs: state.logs.length } }
+    const online = isDemoOnline()
+    return {
+      success: online,
+      baseUrl: state.baseUrl,
+      timestamp: now,
+      responseTime: 12,
+      status: online ? 200 : 503,
+      statusText: online ? 'OK' : 'OFFLINE',
+      error: online ? null : 'Browser is offline',
+      details: { items: state.items.length, employees: state.employees.length, logs: state.logs.length }
+    }
   },
 
   async testEndpoints(): Promise<DemoEndpointTestResults> {
-    return { overall: true, timestamp: new Date().toISOString(), endpoints: [
-      { name: 'items', path: '/api/items', success: true, status: 200, responseTime: 4 },
-      { name: 'employees', path: '/api/employees', success: true, status: 200, responseTime: 4 },
-      { name: 'transactions', path: '/api/employee-logs', success: true, status: 200, responseTime: 4 },
-    ] }
+    const online = isDemoOnline()
+    return {
+      overall: online,
+      timestamp: new Date().toISOString(),
+      endpoints: [
+        { name: 'items', path: '/api/items', success: online, status: online ? 200 : 503, responseTime: 4, ...(online ? {} : { error: 'Offline' }) },
+        { name: 'employees', path: '/api/employees', success: online, status: online ? 200 : 503, responseTime: 4, ...(online ? {} : { error: 'Offline' }) },
+        { name: 'transactions', path: '/api/employee-logs', success: online, status: online ? 200 : 503, responseTime: 4, ...(online ? {} : { error: 'Offline' }) },
+      ]
+    }
   },
 
   resetCache() {

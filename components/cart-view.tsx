@@ -25,8 +25,11 @@ import { CheckoutModal } from "./checkout-modal"
 import { CheckoutSuccessCountdown } from "./checkout-success-countdown"
 import { CartRecoveryPanel, CartStatusIndicator } from "./cart-recovery-panel"
 import { apiBridge } from "../lib/api-bridge"
+import { buildCheckoutArtifacts } from "../lib/cart-checkout-utils"
 import { useToast } from "../hooks/use-toast"
 import { useOfflineManager } from "../hooks/use-offline-manager"
+import { useCartSelection } from "../hooks/use-cart-selection"
+import { useToolboxAppState } from "../hooks/use-toolbox-app-state"
 import type { CartItem } from "../app/page"
 import type { Employee } from "../lib/Services/employees.service"
 
@@ -233,7 +236,6 @@ function HardwareStockGauge({ current, max }: { current: number; max: number }) 
 export function CartView({ items, onUpdateQuantity, onRemoveItem, onReturnToBrowsing, onRefreshData }: CartViewProps) {
   
   // ─── STATE MANAGEMENT ───
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [checkoutItems, setCheckoutItems] = useState<CartItemWithTimestamp[]>([])
   const [checkedOutItemIds, setCheckedOutItemIds] = useState<string[]>([])
   const [quickBrandSelection, setQuickBrandSelection] = useState<string>("__all__")
@@ -246,6 +248,29 @@ export function CartView({ items, onUpdateQuantity, onRemoveItem, onReturnToBrow
   
   const { toast } = useToast()
   const { queueOfflineAction, isOffline } = useOfflineManager()
+  const { markCheckoutSuccess, resetBarcodeQueue, setCheckoutModalOpen } = useToolboxAppState()
+  const {
+    selectedItems,
+    selectedCartItems,
+    selectedTotalItems,
+    allSelected,
+    handleSelectAll,
+    handleSelectItem,
+    applyBrandSelection,
+    invertSelection,
+    clearSelection,
+    removeSelectedIds,
+  } = useCartSelection(items)
+
+  useEffect(() => {
+    setCheckoutModalOpen(isCheckoutOpen)
+  }, [isCheckoutOpen, setCheckoutModalOpen])
+
+  useEffect(() => {
+    return () => {
+      setCheckoutModalOpen(false)
+    }
+  }, [setCheckoutModalOpen])
 
   // ─── DATA PROCESSING ───
   const sortedItems = useMemo(() => {
@@ -287,30 +312,9 @@ export function CartView({ items, onUpdateQuantity, onRemoveItem, onReturnToBrow
     })
   }
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) setSelectedItems(new Set(items.map((item) => item.id)))
-    else setSelectedItems(new Set())
-  }
-
-  const handleSelectItem = (id: string, checked: boolean) => {
-    const newSelected = new Set(selectedItems)
-    if (checked) newSelected.add(id)
-    else newSelected.delete(id)
-    setSelectedItems(newSelected)
-  }
-
   const handleBulkDelete = () => {
     selectedItems.forEach((id) => onRemoveItem(id))
-    setSelectedItems(new Set())
-  }
-
-  const applyBrandSelection = (brandValue: string) => {
-    if (!brandValue || brandValue === "__all__") return
-    const normalizedBrand = String(brandValue).trim().toLowerCase()
-    const matchingIds = items
-      .filter((item) => String(item.brand || 'UNSPECIFIED ORIGIN').trim().toLowerCase() === normalizedBrand)
-      .map((item) => item.id)
-    setSelectedItems(new Set(matchingIds))
+    clearSelection()
   }
 
   const handleSelectByBrand = () => applyBrandSelection(quickBrandSelection)
@@ -320,23 +324,12 @@ export function CartView({ items, onUpdateQuantity, onRemoveItem, onReturnToBrow
     applyBrandSelection(value)
   }
 
-  const handleInvertSelection = () => {
-    setSelectedItems((prev) => {
-      const next = new Set<string>()
-      items.forEach((item) => {
-        if (!prev.has(item.id)) next.add(item.id)
-      })
-      return next
-    })
-  }
+  const handleInvertSelection = () => invertSelection()
 
-  const handleClearSelection = () => setSelectedItems(new Set())
+  const handleClearSelection = () => clearSelection()
 
   // ─── DERIVED STATE ───
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
-  const selectedCartItems = useMemo(() => items.filter((item) => selectedItems.has(item.id)), [items, selectedItems])
-  const selectedTotalItems = useMemo(() => selectedCartItems.reduce((sum, item) => sum + item.quantity, 0), [selectedCartItems])
-  const allSelected = items.length > 0 && selectedItems.size === items.length
 
   // ─── CHECKOUT LOGIC (Retained exactly from original) ───
   const handleCheckout = () => {
@@ -366,106 +359,43 @@ export function CartView({ items, onUpdateQuantity, onRemoveItem, onReturnToBrow
     setIsCheckoutOpen(true)
   }
 
-  const handleConfirmCheckout = async (employee: Employee, purpose?: string, meta?: { inventorySaved?: boolean }) => {
+  const handleConfirmCheckout = async (
+    employee: Employee,
+    purpose?: string,
+    meta?: {
+      inventorySaved?: boolean
+      transactionSaved?: boolean
+      requestsSaved?: boolean
+      requestRefs?: string[]
+    }
+  ) => {
     setIsCommitting(true)
 
     try {
       const itemsToCheckout = checkoutItems.length > 0 ? checkoutItems : selectedCartItems
-      const checkoutTotalItems = itemsToCheckout.reduce((sum, item) => sum + item.quantity, 0)
-
-      const apiConfig = apiBridge.getConfig()
-      const enhancedItems = itemsToCheckout.map(item => ({
-        id: item.id,
-        name: item.name,
-        brand: item.brand || 'N/A',
-        itemType: item.itemType || 'N/A',
-        location: item.location || 'N/A',
-        quantity: item.quantity,
-        originalBalance: item.balance,
-        newBalance: Math.max(0, item.balance - item.quantity)
-      }))
-
-      let detailsText = `Checkout: ${checkoutTotalItems} items - `
-
-      if (enhancedItems.length <= 2) {
-        detailsText += enhancedItems.map(item => `${item.name} x${item.quantity} (${item.brand})`).join(', ')
-      } else if (enhancedItems.length <= 4) {
-        detailsText += enhancedItems.map(item => `${item.name} x${item.quantity}`).join(', ')
-      } else {
-        const itemSummary = enhancedItems.reduce((acc, item) => {
-          acc[item.name] = (acc[item.name] || 0) + item.quantity
-          return acc
-        }, {} as Record<string, number>)
-
-        detailsText += Object.entries(itemSummary)
-          .map(([item, qty]) => `${item} x${qty}`)
-          .join(', ')
-      }
-
-      if (detailsText.length > 255) {
-        detailsText = detailsText.substring(0, 252) + '...'
-      }
-
-      let itemNumbers = itemsToCheckout.map(item => item.id).join(';')
-      if (itemNumbers.length > 255) {
-        const maxLength = 252
-        const itemIds = itemsToCheckout.map(item => item.id)
-        const truncatedIds: string[] = []
-        let currentLength = 0
-
-        for (const id of itemIds) {
-          const separatorLength = truncatedIds.length > 0 ? 1 : 0
-          if (currentLength + id.length + separatorLength <= maxLength) {
-            truncatedIds.push(id)
-            currentLength += id.length + separatorLength
-          } else {
-            break
-          }
-        }
-
-        itemNumbers = truncatedIds.join(';') + (truncatedIds.length < itemIds.length ? '...' : '')
-      }
-
-      const structuredItems = enhancedItems.map(item => ({
-        item_no: item.id,
-        item_name: item.name,
-        brand: item.brand,
-        item_type: item.itemType,
-        location: item.location,
-        quantity: item.quantity,
-        unit_of_measure: 'pcs',
-        balance_before: item.originalBalance,
-        balance_after: item.newBalance
-      }))
-
-      const transactionData: any = {
-        username: employee.fullName,
-        details: detailsText,
-        id_number: employee.idNumber,
-        id_barcode: employee.idBarcode,
-        item_no: itemNumbers,
-        items_json: JSON.stringify(structuredItems)
-      }
-
-      if (purpose && purpose.trim()) {
-        transactionData.purpose = purpose.trim()
-      }
-
-      const inventoryCheckouts = itemsToCheckout.map(item => ({
-        employee_uid: employee.id,
-        employee_barcode: employee.idBarcode,
-        employee_name: employee.fullName,
-        material_name: item.name,
-        quantity_checked_out: item.quantity,
-        unit_of_measure: 'pcs',
-        item_no: item.id,
-        item_description: `${item.brand} - ${item.itemType}`,
-        purpose: purpose || 'Inventory checkout',
-        project_name: null
-      }))
+      const { checkoutTotalItems, transactionData, inventoryCheckouts } = buildCheckoutArtifacts(
+        itemsToCheckout.map((item) => ({
+          id: item.id,
+          name: item.name,
+          brand: item.brand,
+          itemType: item.itemType,
+          location: item.location,
+          quantity: item.quantity,
+          balance: item.balance,
+        })),
+        {
+          id: employee.id,
+          fullName: employee.fullName,
+          idNumber: employee.idNumber,
+          idBarcode: employee.idBarcode,
+        },
+        purpose
+      )
 
       const browserOffline = typeof navigator !== 'undefined' ? !navigator.onLine : isOffline
-      const shouldQueueCheckout = browserOffline || !apiConfig.isConnected
+      const inventorySaved = Boolean(meta?.inventorySaved)
+      const transactionSaved = Boolean(meta?.transactionSaved)
+      const shouldQueueCheckout = browserOffline || !inventorySaved || !transactionSaved
 
       if (shouldQueueCheckout) {
         queueOfflineAction('checkout', {
@@ -476,57 +406,36 @@ export function CartView({ items, onUpdateQuantity, onRemoveItem, onReturnToBrow
             employeeName: employee.fullName,
             totalItems: checkoutTotalItems
           },
-          inventorySynced: Boolean(meta?.inventorySaved),
-          transactionSynced: false
+          inventorySynced: inventorySaved,
+          transactionSynced: transactionSaved
         })
 
         toast({
-          title: "OFFLINE INJECTION QUEUED 📦",
-          description: `${checkoutTotalItems} units buffered for sync.`,
-          toastType: 'info',
+          title: browserOffline ? "OFFLINE INJECTION QUEUED 📦" : "SYNC DELAYED ⚠️",
+          description: browserOffline
+            ? `${checkoutTotalItems} units buffered for sync.`
+            : `${checkoutTotalItems} units partially synced; remaining actions queued.`,
+          toastType: browserOffline ? 'info' : 'warning',
           duration: 4500
         } as any)
       } else {
-        try {
-          await apiBridge.logTransaction(transactionData)
+        toast({
+          title: "EXECUTION SUCCESSFUL ✅",
+          description: `${checkoutTotalItems} units extracted. Ledger updated.`,
+          toastType: 'success',
+          duration: 4000
+        } as any)
+      }
 
-          toast({
-            title: "EXECUTION SUCCESSFUL ✅",
-            description: `${checkoutTotalItems} units extracted. Ledger updated.`,
-            toastType: 'success',
-            duration: 4000
-          } as any)
-        } catch (transactionError) {
-          queueOfflineAction('checkout', {
-            inventoryCheckouts,
-            checkoutBy: null,
-            transactionData,
-            summary: {
-              employeeName: employee.fullName,
-              totalItems: checkoutTotalItems
-            },
-            inventorySynced: Boolean(meta?.inventorySaved),
-            transactionSynced: false
-          })
-
-          toast({
-            title: "SYNC DELAYED ⚠️",
-            description: `API unreachable. ${checkoutTotalItems} units queued locally.`,
-            toastType: 'warning',
-            duration: 4000
-          } as any)
-        }
-
-        if (onRefreshData) {
-          onRefreshData()
-        }
+      if (meta?.inventorySaved && onRefreshData) {
+        onRefreshData()
       }
 
       setIsCheckoutOpen(false)
       setCheckedOutItemIds(itemsToCheckout.map((item) => item.id))
       setCheckoutData({ userId: employee.id.toString(), totalItems: checkoutTotalItems })
       setShowSuccessCountdown(true)
-      window.dispatchEvent(new CustomEvent('toolbox-checkout-success'))
+      markCheckoutSuccess()
     } catch (error) {
       toast({
         title: "SYSTEM FAULT",
@@ -547,15 +456,11 @@ export function CartView({ items, onUpdateQuantity, onRemoveItem, onReturnToBrow
 
     // Remove only checked-out (selected) items
     checkedOutItemIds.forEach((id) => onRemoveItem(id))
-    setSelectedItems(prev => {
-      const next = new Set(prev)
-      checkedOutItemIds.forEach((id) => next.delete(id))
-      return next
-    })
+    removeSelectedIds(checkedOutItemIds)
     setCheckedOutItemIds([])
 
-    // Clear the scanned barcode queue
-    window.dispatchEvent(new CustomEvent('clear-barcode-queue'))
+    // Clear queued barcode scans after a successful checkout.
+    resetBarcodeQueue()
 
     // Return to browsing/dashboard view
     if (shouldReturnToBrowsing && onReturnToBrowsing) {

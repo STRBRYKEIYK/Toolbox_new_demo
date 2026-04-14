@@ -8,7 +8,7 @@ import { ScanLine, ShoppingCart, Trash2, Plus, Minus, Terminal, Hash, AlertTrian
 import type { Product } from '../lib/barcode-scanner'
 import { apiBridge } from '../lib/api-bridge'
 
-interface BulkLineItem {
+export interface BulkLineItem {
   product: Product
   quantity: number
 }
@@ -17,11 +17,23 @@ interface BarcodeModalProps {
   open: boolean
   initialValue?: string
   products?: Product[]
+  appendItem?: BulkLineItem | null
+  onAppendItemHandled?: () => void
+  queueResetToken?: number
   onClose: () => void
   onConfirm: (payload: { barcode?: string; quantity?: number } | { items: BulkLineItem[] }) => void
 }
 
-export default function BarcodeModal({ open, initialValue = '', products = [], onClose, onConfirm }: BarcodeModalProps) {
+export default function BarcodeModal({
+  open,
+  initialValue = '',
+  products = [],
+  appendItem = null,
+  onAppendItemHandled,
+  queueResetToken,
+  onClose,
+  onConfirm,
+}: BarcodeModalProps) {
   const [barcode, setBarcode] = useState(initialValue)
   const [quantity, setQuantity] = useState<number>(1)
   const hiddenInputRef = useRef<HTMLInputElement | null>(null)
@@ -70,46 +82,40 @@ export default function BarcodeModal({ open, initialValue = '', products = [], o
   }, [products])
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      try {
-        const detail = (e as CustomEvent).detail || {}
-        const li = detail.item
-        if (!li || !li.product) return
+    if (!appendItem?.product) return
 
-        const p = li.product as Product
-        if (p.status === 'out-of-stock' || (typeof p.balance === 'number' && p.balance <= 0)) {
-          console.warn(`[barcode-modal] Skipped queuing out-of-stock item: ${p.name}`)
-          return
-        }
-
-        setLineItems(prev => {
-          const idx = prev.findIndex(x => String(x.product.id) === String(p.id))
-          if (idx !== -1) {
-            const next = [...prev]
-            const existing = next[idx]
-            if (!existing) return prev
-            next[idx] = { product: existing.product, quantity: Math.max(0, existing.quantity + (li.quantity || 1)) }
-            return next
-          }
-          return [...prev, { product: p, quantity: li.quantity || 1 }]
-        })
-      } catch (err) {
-        console.error('barcode-modal append handler error', err)
-      }
+    const p = appendItem.product
+    if (p.status === 'out-of-stock' || (typeof p.balance === 'number' && p.balance <= 0)) {
+      onAppendItemHandled?.()
+      return
     }
 
-    window.addEventListener('scanned-barcode-append', handler as EventListener)
-    return () => window.removeEventListener('scanned-barcode-append', handler as EventListener)
-  }, [])
+    setLineItems(prev => {
+      const idx = prev.findIndex(x => String(x.product.id) === String(p.id))
+      if (idx !== -1) {
+        const next = [...prev]
+        const existing = next[idx]
+        if (!existing) return prev
+        next[idx] = { product: existing.product, quantity: Math.max(0, existing.quantity + (appendItem.quantity || 1)) }
+        return next
+      }
+      return [...prev, { product: p, quantity: appendItem.quantity || 1 }]
+    })
+
+    onAppendItemHandled?.()
+  }, [appendItem, onAppendItemHandled])
 
   useEffect(() => {
-    const handler = () => {
+    if (queueResetToken === undefined) return
+
+    setLineItems([])
+  }, [queueResetToken])
+
+  useEffect(() => {
+    if (!open) {
       setLineItems([])
     }
-
-    window.addEventListener('clear-barcode-queue', handler as EventListener)
-    return () => window.removeEventListener('clear-barcode-queue', handler as EventListener)
-  }, [])
+  }, [open])
 
   const handleConfirmSingle = () => {
     onConfirm({ barcode: barcode.trim(), quantity })

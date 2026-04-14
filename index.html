@@ -19,9 +19,9 @@
       // Prevent flash of unstyled content by setting theme before page renders
       // Default to dark mode
       (function() {
+        const root = document.documentElement;
         try {
           const theme = localStorage.getItem('toolbox-theme') || 'dark';
-          const root = document.documentElement;
           
           if (theme === 'system') {
             const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
